@@ -30,4 +30,4 @@ O título da mensagem de commit deve incluir o número da issue do GitHub. O for
 - Mantenha o título da mensagem de commit conciso (idealmente entre 50-72 caracteres).
 - Foque cada commit em uma única mudança lógica.
 - Evite terminar o título com ponto final.
-- Se a branc
+- Se a branch não conter o número da issue do GitHub, apenas escreva a commit message após o :. Seguindo a estrutura <tipo><(contexto)>: <descrição curta>.
