@@ -1,12 +1,3 @@
----
-name: Feature request
-about: New project feature.
-title: ''
-labels: ''
-assignees: ''
-
----
-
 # [TIPO_DA_FEATURE] Ação da feature
 
 > ## Contexto
