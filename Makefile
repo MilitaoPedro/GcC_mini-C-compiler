@@ -1,24 +1,17 @@
-# Nome do executável
-EXEC=scanner
-
-# Diretórios
 SRC=src
-TESTS=tests
-
-# Arquivo do Flex
 LEX=$(SRC)/scanner.l
+EXEC=$(SRC)/scanner
 
-# Regras
 all: $(EXEC)
 
-$(EXEC): lex.yy.c
-	gcc -o $(EXEC) lex.yy.c -lfl
+$(EXEC): $(SRC)/lex.yy.c
+	gcc -o $(EXEC) $(SRC)/lex.yy.c -lfl
 
-lex.yy.c: $(LEX)
-	flex $(LEX)
+$(SRC)/lex.yy.c: $(LEX)
+	flex -o $(SRC)/lex.yy.c $(LEX)
 
 run: $(EXEC)
-	./$(EXEC) $(TESTS)/teste.txt
+	$(EXEC) ./tests/teste.txt
 
 clean:
-	rm -f lex.yy.c $(EXEC)
+	rm -f $(SRC)/lex.yy.c $(EXEC)
