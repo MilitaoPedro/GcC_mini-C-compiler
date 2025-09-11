@@ -16,6 +16,7 @@ jobs:
         run: |
           flex src/scanner.l
           gcc lex.yy.c -o scanner -lfl
-          ./scanner < tests/teste.txt
+          ./scanner tests/teste.txt
+
 
 
