@@ -18,7 +18,7 @@ lex.yy.c: $(LEX)
 	flex $(LEX)
 
 run: $(EXEC)
-	./$(EXEC) < $(TESTS)/teste.txt
+	./$(EXEC) $(TESTS)/teste.txt
 
 clean:
 	rm -f lex.yy.c $(EXEC)

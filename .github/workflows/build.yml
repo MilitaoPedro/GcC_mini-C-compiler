@@ -9,12 +9,13 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v3
 
-      - name: Instalar flex e gcc
-        run: sudo apt-get update && sudo apt-get install -y flex gcc
+      - name: Instalar flex, gcc e libfl-dev
+        run: sudo apt-get update && sudo apt-get install -y flex gcc libfl-dev
 
       - name: Compilar com flex
         run: |
           flex src/scanner.l
           gcc lex.yy.c -o scanner -lfl
           ./scanner < tests/teste.txt
+
 
