@@ -12,7 +12,7 @@ LEX=$(SRC)/scanner.l
 all: $(EXEC)
 
 $(EXEC): lex.yy.c
-	gcc -o $(EXEC) lex.yy.c -ll
+	gcc -o $(EXEC) lex.yy.c -lfl
 
 lex.yy.c: $(LEX)
 	flex $(LEX)

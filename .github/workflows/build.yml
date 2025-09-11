@@ -15,6 +15,6 @@ jobs:
       - name: Compilar com flex
         run: |
           flex src/scanner.l
-          gcc lex.yy.c -o scanner -ll
+          gcc lex.yy.c -o scanner -lfl
           ./scanner < tests/teste.txt
 
