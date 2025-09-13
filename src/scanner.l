@@ -4,9 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-FILE *yyin;
-FILE *yyout;
-
 /* Definições de cores ANSI */
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
@@ -16,17 +13,28 @@ FILE *yyout;
 #define MAGENTA "\033[35m"
 #define CYAN    "\033[36m"
 #define BOLD    "\033[1m"
+
+/* Declações de variáveis para contagem de linha e coluna */
+int line_index = 1;
+int column_index = 0;
 %}
 
-comment "//".*|"/*"(.|\n)*"*/"
-space [ \t\n]+
+comment "//".*
+space   [ \t]+
+
+%x      IN_COMMENT
 
 /* ========================== Seção de regras ========================== */
 %%
 
-{comment}       {  }
-{space}         {  }
-.               {  }
+\n               { column_index = 0; line_index++; }
+{comment}        { column_index += yyleng; }
+"/*"             { BEGIN(IN_COMMENT); column_index += yyleng;}
+<IN_COMMENT>.    { column_index += yyleng;}
+<IN_COMMENT>\n   { column_index = 0; line_index++; }
+<IN_COMMENT>"*/" { BEGIN(INITIAL); column_index += yyleng;}
+{space}          { column_index += yyleng; }
+.                { column_index += yyleng; }
 
 %%
 /* ========================= Seção de código C ========================= */
@@ -44,6 +52,7 @@ int main(int argc, char *argv[]){
     yyout = stdout;
     printf(BOLD BLUE "Iniciando análise...\n" RESET);
     yylex();
+    printf("Número de linhas: %d\n", line_index);
     printf(BOLD GREEN "Análise finalizada!\n" RESET);
     fclose(yyin);
     return 0;
