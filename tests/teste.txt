@@ -1,7 +1,16 @@
 inicio
 
 
+// este é um comentário de uma linha inteira
 
-
-
+/*
+este
+é
+um 
+comentário
+de
+um 
+trexo
+inteiro
+*/
 fim

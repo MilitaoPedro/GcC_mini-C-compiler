@@ -18,13 +18,15 @@ FILE *yyout;
 #define BOLD    "\033[1m"
 %}
 
-line .*
+comment "//".*|"/*"(.|\n)*"*/"
+space [ \t\n]+
 
 /* ========================== Seção de regras ========================== */
 %%
 
-{line}\n        { printf("%5d %s", yylineno-1, yytext); }
-{line}          { printf("%5d %s\n", yylineno, yytext); }
+{comment}       {  }
+{space}         {  }
+.               {  }
 
 %%
 /* ========================= Seção de código C ========================= */
