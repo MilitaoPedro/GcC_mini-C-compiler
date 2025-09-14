@@ -16,14 +16,30 @@
 
 /* Declações de variáveis para contagem de linha e coluna */
 int line_index = 1;
-int column_index = 0;
+int column_index = 1;
 
-void processar_token(char* token_nome) {
-    printf("[Linha: %d, Coluna: %d] Token: %s, Lexema: '%s'\n",
+int add_symbol(char* lexeme) {
+    // LÓGICA FUTURA A SER IMPLEMENTADA 
+    return 1; // Retorna a posição na tabela de simbolos
+}
+
+void process_token(const char* token_name, int is_symbol) {
+    char formatted_lexeme[256];
+    // Se o token for um símbolo (identificador, número, etc.)
+    if (is_symbol) {
+        int table_pos = add_symbol(yytext);
+        // Formata o lexema para o estilo '<'lexema', pos>'
+        sprintf(formatted_lexeme, "<'%s', %d>", yytext, table_pos);
+    } else {
+        // Para tokens simples (palavras-chave), apenas usa o lexema
+        sprintf(formatted_lexeme, "'%s'", yytext);
+    }
+
+    printf("[Linha: %d, Coluna: %d] Token: %s, Lexema: %-20s\n",
            line_index,
            column_index,
-           token_nome,
-           yytext        // yytext contém o lexema encontrado
+           token_name,
+           formatted_lexeme
            );
 
     // Atualiza a coluna para a posição logo após o token atual
@@ -32,51 +48,59 @@ void processar_token(char* token_nome) {
 
 %}
 
-comment "//".*
-space   [ \t]+
+comment      "//".*
+space        [ \t]+
+letter       [a-zA-Z_]
+digit        [0-9]
+identifier   {letter}({letter}|{digit})*
 
-%x      IN_COMMENT
+%x           IN_COMMENT
 
 /* ========================== Seção de regras ========================== */
 %%
 
-\n               { column_index = 0; line_index++; }
-{comment}        { column_index += yyleng; }
-"/*"             { BEGIN(IN_COMMENT); column_index += yyleng;}
-<IN_COMMENT>.    { column_index += yyleng;}
-<IN_COMMENT>\n   { column_index = 0; line_index++; }
+\n              { column_index = 1; line_index++; }
+{comment}       { column_index += yyleng; }
+"/*"            { BEGIN(IN_COMMENT); column_index += yyleng;}
+<IN_COMMENT>.   { column_index += yyleng;}
+<IN_COMMENT>\n  { column_index = 1; line_index++; }
 <IN_COMMENT>"*/" { BEGIN(INITIAL); column_index += yyleng;}
-{space}          { column_index += yyleng; }
-"if"             { processar_token("TK_IF"); }
-"else"           { processar_token("TK_ELSE"); }
-"while"          { processar_token("TK_WHILE"); }
-"print"          { processar_token("TK_PRINT"); }
-"read"           { processar_token("TK_READ"); }
-"true"           { processar_token("TK_TRUE"); }
-"false"          { processar_token("TK_FALSE"); }
-"int"            { processar_token("TK_INT_TYPE"); }
-"bool"           { processar_token("TK_BOOL_TYPE"); }
-.                { column_index += yyleng; }
+{space}         { column_index += yyleng; }
+
+"if"            { process_token("TK_IF", 0); }
+"else"          { process_token("TK_ELSE", 0); }
+"while"         { process_token("TK_WHILE", 0); }
+"print"         { process_token("TK_PRINT", 0); }
+"read"          { process_token("TK_READ", 0); }
+"true"          { process_token("TK_TRUE", 0); }
+"false"         { process_token("TK_FALSE", 0); }
+"int"           { process_token("TK_INT_TYPE", 0); }
+"bool"          { process_token("TK_BOOL_TYPE", 0); }
+
+{identifier}    { process_token("TK_IDENTIFIER", 1); }
+.               { column_index += yyleng; }
 
 %%
 /* ========================= Seção de código C ========================= */
-
 
 int main(int argc, char *argv[]){
     if (argc < 2){
         fprintf(stderr, "Uso: %s <arquivo>\n", argv[0]);
         return 1;
     }
+    
     yyin = fopen(argv[1], "r");
     if (!yyin){
         perror(BOLD RED "Erro ao abrir o arquivo" RESET);
         return 1;
     }
+    
     yyout = stdout;
     printf(BOLD BLUE "Iniciando análise...\n" RESET);
     yylex();
     printf("Número de linhas: %d\n", line_index);
     printf(BOLD GREEN "Análise finalizada!\n" RESET);
+    
     fclose(yyin);
     return 0;
 }
