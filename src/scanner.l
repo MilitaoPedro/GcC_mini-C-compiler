@@ -17,6 +17,19 @@
 /* Declações de variáveis para contagem de linha e coluna */
 int line_index = 1;
 int column_index = 0;
+
+void processar_token(char* token_nome) {
+    printf("[Linha: %d, Coluna: %d] Token: %s, Lexema: '%s'\n",
+           line_index,
+           column_index,
+           token_nome,
+           yytext        // yytext contém o lexema encontrado
+           );
+
+    // Atualiza a coluna para a posição logo após o token atual
+    column_index += yyleng; // yyleng contém o tamanho do lexema
+}
+
 %}
 
 comment "//".*
@@ -34,18 +47,28 @@ space   [ \t]+
 <IN_COMMENT>\n   { column_index = 0; line_index++; }
 <IN_COMMENT>"*/" { BEGIN(INITIAL); column_index += yyleng;}
 {space}          { column_index += yyleng; }
+"if"             { processar_token("TK_IF"); }
+"else"           { processar_token("TK_ELSE"); }
+"while"          { processar_token("TK_WHILE"); }
+"print"          { processar_token("TK_PRINT"); }
+"read"           { processar_token("TK_READ"); }
+"true"           { processar_token("TK_TRUE"); }
+"false"          { processar_token("TK_FALSE"); }
+"int"            { processar_token("TK_INT_TYPE"); }
+"bool"           { processar_token("TK_BOOL_TYPE"); }
 .                { column_index += yyleng; }
 
 %%
 /* ========================= Seção de código C ========================= */
 
+
 int main(int argc, char *argv[]){
-    if(argc < 2){
+    if (argc < 2){
         fprintf(stderr, "Uso: %s <arquivo>\n", argv[0]);
         return 1;
     }
     yyin = fopen(argv[1], "r");
-    if(!yyin){
+    if (!yyin){
         perror(BOLD RED "Erro ao abrir o arquivo" RESET);
         return 1;
     }

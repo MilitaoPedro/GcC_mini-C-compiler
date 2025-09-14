@@ -12,6 +12,9 @@ de
 um
 trexo
 inteiro*/
+
+if
+      while
 fim 
 
 .
