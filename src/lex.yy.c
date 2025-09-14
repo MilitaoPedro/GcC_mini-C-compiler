@@ -1067,14 +1067,27 @@ YY_RULE_SETUP
 case 39:
 YY_RULE_SETUP
 #line 109 "src/scanner.l"
-{ column_index += yyleng; }
+{
+                        // Cria uma string descritiva para o "lexema" do erro
+                        char error_lexeme[64];
+                        sprintf(error_lexeme, "'%s' <- Inválido", yytext);
+
+                        // Imprime a linha de erro usando o mesmo formato de tabela
+                        printf("║ " BOLD RED "[%03d:%03d]" RESET " ║ " BOLD RED "%-21s" RESET " ║ " BOLD RED "%-40s" RESET "  ║\n",
+                               line_index,
+                               column_index,
+                               "ERRO LÉXICO",  // O "tipo de token" do erro
+                               error_lexeme);  // A descrição do erro
+
+                        column_index += yyleng;
+                    }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 111 "src/scanner.l"
+#line 124 "src/scanner.l"
 ECHO;
 	YY_BREAK
-#line 1078 "src/lex.yy.c"
+#line 1091 "src/lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(IN_COMMENT):
 	yyterminate();
@@ -2092,7 +2105,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 111 "src/scanner.l"
+#line 124 "src/scanner.l"
 
 /* ========================= Seção de código C ========================= */
 
