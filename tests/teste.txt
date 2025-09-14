@@ -1,25 +1,50 @@
-inicio
-
-
-// este e um comentario de uma linha inteira
+// Arquivo de teste revisado para o Analisador Léxico.
+// Focado apenas nas palavras-chave e tokens definidos na linguagem.
 
 /*
-este
-e
-um
-comentario
-de
-um
-trexo
-inteiro*/
+  Este é um comentário de múltiplas linhas.
+  Ele testa a capacidade do analisador de ignorar blocos inteiros,
+  incluindo novas linhas dentro do comentário.
+*/
 
-if
-      while
+void main() {
+    // Declaração de variáveis com os tipos válidos da linguagem.
+    int a = 100;
+    int b = -25;
+    bool flag = true;
+    
+    // Teste: 'custom_type' não é uma palavra-chave, deve ser um identificador.
+    // Isso é útil para garantir que o analisador diferencia keywords de identifiers.
+    custom_type pi_approx = +3.1415;
+    custom_type big_num = 1.23e+10;
+    custom_type small_num = -9.87E-2;
 
-123.45
-12
-            1e79
- 1E65
-fim 
+    // Teste de palavras-chave de I/O e estruturas de controle
+    read(a);
+    if (a >= b && flag != false) {
+        print(a);
+    } else {
+        // Bloco else
+        b = a * (b + 1);
+    }
 
-.
+    // Teste de loop e operadores relacionais
+    while (b < 0) {
+        b = b + 1;
+        // O operador de negação !
+        if (!flag) {
+            print(b);
+        }
+    }
+    
+    // Teste de operadores lógicos || e !=
+    if (a == 100 || b != 0) {
+        int _temp_var = 5;
+    }
+
+    /* Testes de Erros Léxicos */
+    // O analisador deve reportar os caracteres inválidos abaixo.
+    int invalid@char = 1;  // Erro: @
+    float test$ = 2.0;       // Erro: $
+    a = b ? 5 : 10;          // Erro: ? e :
+}

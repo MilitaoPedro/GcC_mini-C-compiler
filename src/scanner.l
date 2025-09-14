@@ -55,7 +55,7 @@ letter     [a-zA-Z_]
 digit      [0-9]
 identifier {letter}({letter}|{digit})*
 exponent   [eE][+-]?{digit}+
-number     [+-]?({digit}+\.{digit}*|\.{digit}+)({exponent})?|{digit}+{exponent}|{digit}+
+number     [+-]?((({digit}+\.{digit}*|\.{digit}+)({exponent})?)|{digit}+{exponent}|{digit}+)
 
 %x           IN_COMMENT
 
@@ -82,6 +82,28 @@ number     [+-]?({digit}+\.{digit}*|\.{digit}+)({exponent})?|{digit}+{exponent}|
 
 {number}            { process_token("TK_NUMBER", 1); }
 {identifier}        { process_token("TK_IDENTIFIER", 1); }
+
+"=="                { process_token("TK_OP_EQ", 0); }
+"!="                { process_token("TK_OP_NE", 0); }
+"<="                { process_token("TK_OP_LE", 0); }
+">="                { process_token("TK_OP_GE", 0); }
+"&&"                { process_token("TK_LOGICAL_AND", 0); }
+"||"                { process_token("TK_LOGICAL_OR", 0); }
+"+"                 { process_token("TK_PLUS", 0); }
+"-"                 { process_token("TK_MINUS", 0); }
+"*"                 { process_token("TK_MULT", 0); }
+"/"                 { process_token("TK_DIV", 0); }
+"<"                 { process_token("TK_OP_LT", 0); }
+">"                 { process_token("TK_OP_GT", 0); }
+"!"                 { process_token("TK_LOGICAL_NOT", 0); }
+"="                 { process_token("TK_ASSIGN", 0); }
+
+";"                 { process_token("TK_SEMICOLON", 0); }
+","                 { process_token("TK_COMMA", 0); }
+"("                 { process_token("TK_OPEN_PAREN", 0); }
+")"                 { process_token("TK_CLOSE_PAREN", 0); }
+"{"                 { process_token("TK_OPEN_BRACE", 0); }
+"}"                 { process_token("TK_CLOSE_BRACE", 0); }
 
 .                   { column_index += yyleng; }
 
