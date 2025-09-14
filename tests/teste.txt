@@ -47,4 +47,5 @@ void main() {
     int invalid@char = 1;  // Erro: @
     float test$ = 2.0;       // Erro: $
     a = b ? 5 : 10;          // Erro: ? e :
+    8val = 7;
 }

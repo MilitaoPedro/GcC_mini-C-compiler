@@ -47,16 +47,32 @@ void process_token(const char* token_name, int is_symbol) {
     column_index += yyleng; // yyleng contém o tamanho do lexema
 }
 
+void process_error(){
+    // Cria uma string descritiva para o "lexema" do erro
+    char error_lexeme[64];
+    sprintf(error_lexeme, "'%s' <- Inválido", yytext);
+
+    // Imprime a linha de erro usando o mesmo formato de tabela
+    printf("║ " BOLD RED "[%03d:%03d]" RESET " ║ " BOLD RED "%-21s" RESET " ║ " BOLD RED "%-40s" RESET "  ║\n",
+            line_index,
+            column_index,
+            "ERRO LÉXICO",  // O "tipo de token" do erro
+            error_lexeme);  // A descrição do erro
+
+    column_index += yyleng;
+}
+
 %}
 
 /* ==== DEFINIÇÕES CORRIGIDAS ==== */
-comment    "//".*
-space      [ \t]+
-letter     [a-zA-Z_]
-digit      [0-9]
-identifier {letter}({letter}|{digit})*
-exponent   [eE][+-]?{digit}+
-number     [+-]?((({digit}+\.{digit}*|\.{digit}+)({exponent})?)|{digit}+{exponent}|{digit}+)
+comment             "//".*
+space               [ \t]+
+letter              [a-zA-Z_]
+digit               [0-9]
+identifier          {letter}({letter}|{digit})*
+no_identifier       {digit}({letter}|{digit})*
+exponent            [eE][+-]?{digit}+
+number              [+-]?((({digit}+\.{digit}*|\.{digit}+)({exponent})?)|{digit}+{exponent}|{digit}+)
 
 %x           IN_COMMENT
 
@@ -106,20 +122,8 @@ number     [+-]?((({digit}+\.{digit}*|\.{digit}+)({exponent})?)|{digit}+{exponen
 "{"                 { process_token("TK_OPEN_BRACE", 0); }
 "}"                 { process_token("TK_CLOSE_BRACE", 0); }
 
-.                   {
-                        // Cria uma string descritiva para o "lexema" do erro
-                        char error_lexeme[64];
-                        sprintf(error_lexeme, "'%s' <- Inválido", yytext);
-
-                        // Imprime a linha de erro usando o mesmo formato de tabela
-                        printf("║ " BOLD RED "[%03d:%03d]" RESET " ║ " BOLD RED "%-21s" RESET " ║ " BOLD RED "%-40s" RESET "  ║\n",
-                               line_index,
-                               column_index,
-                               "ERRO LÉXICO",  // O "tipo de token" do erro
-                               error_lexeme);  // A descrição do erro
-
-                        column_index += yyleng;
-                    }
+{no_identifier}     { process_error(); }
+.                   { process_error(); }
 
 %%
 /* ========================= Seção de código C ========================= */
