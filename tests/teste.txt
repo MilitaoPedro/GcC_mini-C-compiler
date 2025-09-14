@@ -42,7 +42,7 @@ void main() {
         int _temp_var = 5;
     }
 
-    /* Testes de Erros Léxicos */
+    // Testes de Erros Léxicos 
     // O analisador deve reportar os caracteres inválidos abaixo.
     int invalid@char = 1;  // Erro: @
     float test$ = 2.0;       // Erro: $

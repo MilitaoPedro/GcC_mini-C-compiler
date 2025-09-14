@@ -35,12 +35,13 @@ void process_token(const char* token_name, int is_symbol) {
         sprintf(formatted_lexeme, "'%s'", yytext);
     }
 
-    printf("[Linha: %d, Coluna: %d] Token: %s, Lexema: %-20s\n",
-           line_index,
-           column_index,
-           token_name,
-           formatted_lexeme
-           );
+    // Dentro da função process_token
+    printf("║ " YELLOW "[%03d:%03d]" RESET " ║ " CYAN "%-20s" RESET " ║ " GREEN "%-40s" RESET " ║\n",
+        line_index,
+        column_index,
+        token_name,
+        formatted_lexeme
+        );
 
     // Atualiza a coluna para a posição logo após o token atual
     column_index += yyleng; // yyleng contém o tamanho do lexema
@@ -124,8 +125,12 @@ int main(int argc, char *argv[]){
     
     yyout = stdout;
     printf(BOLD BLUE "Iniciando análise...\n" RESET);
-    yylex();
-    printf("Número de linhas: %d\n", line_index);
+    printf("╔═══════════╦══════════════════════╦══════════════════════════════════════════╗\n");
+    printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "%-20s" RESET " ║ " BOLD GREEN "%-40s" RESET " ║\n", "[Lin:Col]", "Token", "Lexema");
+    printf("╠═══════════╬══════════════════════╬══════════════════════════════════════════╣\n");
+    yylex();   
+    
+    printf("╚═══════════╩══════════════════════╩══════════════════════════════════════════╝\n");
     printf(BOLD GREEN "Análise finalizada!\n" RESET);
     
     fclose(yyin);
