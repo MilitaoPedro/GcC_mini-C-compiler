@@ -1,0 +1,16 @@
+// Teste de detecção de erros
+int main() {
+    int valido = 10;
+    
+    // Caracteres inválidos que devem gerar erros
+    int erro@ = 5;
+    bool flag# = true;
+    bool 1inr = true;
+    
+    // Mais caracteres inválidos
+    int x$ = 20;
+    char &invalid = 'a';
+    
+    print("Teste de erros");
+}
+
