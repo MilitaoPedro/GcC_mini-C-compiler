@@ -48,37 +48,42 @@ void process_token(const char* token_name, int is_symbol) {
 
 %}
 
-comment      "//".*
-space        [ \t]+
-letter       [a-zA-Z_]
-digit        [0-9]
-identifier   {letter}({letter}|{digit})*
+/* ==== DEFINIÇÕES CORRIGIDAS ==== */
+comment    "//".*
+space      [ \t]+
+letter     [a-zA-Z_]
+digit      [0-9]
+identifier {letter}({letter}|{digit})*
+exponent   [eE][+-]?{digit}+
+number     [+-]?({digit}+\.{digit}*|\.{digit}+)({exponent})?|{digit}+{exponent}|{digit}+
 
 %x           IN_COMMENT
 
 /* ========================== Seção de regras ========================== */
 %%
 
-\n              { column_index = 1; line_index++; }
-{comment}       { column_index += yyleng; }
-"/*"            { BEGIN(IN_COMMENT); column_index += yyleng;}
-<IN_COMMENT>.   { column_index += yyleng;}
-<IN_COMMENT>\n  { column_index = 1; line_index++; }
-<IN_COMMENT>"*/" { BEGIN(INITIAL); column_index += yyleng;}
-{space}         { column_index += yyleng; }
+\n                  { column_index = 1; line_index++; }
+{comment}           ;
+"/*"                { BEGIN(IN_COMMENT); column_index += yyleng;}
+<IN_COMMENT>.       { column_index += yyleng;}
+<IN_COMMENT>\n      { column_index = 1; line_index++; }
+<IN_COMMENT>"*/"    { BEGIN(INITIAL); column_index += yyleng;}
+{space}             { column_index += yyleng; }
 
-"if"            { process_token("TK_IF", 0); }
-"else"          { process_token("TK_ELSE", 0); }
-"while"         { process_token("TK_WHILE", 0); }
-"print"         { process_token("TK_PRINT", 0); }
-"read"          { process_token("TK_READ", 0); }
-"true"          { process_token("TK_TRUE", 0); }
-"false"         { process_token("TK_FALSE", 0); }
-"int"           { process_token("TK_INT_TYPE", 0); }
-"bool"          { process_token("TK_BOOL_TYPE", 0); }
+"if"                { process_token("TK_IF", 0); }
+"else"              { process_token("TK_ELSE", 0); }
+"while"             { process_token("TK_WHILE", 0); }
+"print"             { process_token("TK_PRINT", 0); }
+"read"              { process_token("TK_READ", 0); }
+"true"              { process_token("TK_TRUE", 0); }
+"false"             { process_token("TK_FALSE", 0); }
+"int"               { process_token("TK_INT_TYPE", 0); }
+"bool"              { process_token("TK_BOOL_TYPE", 0); }
 
-{identifier}    { process_token("TK_IDENTIFIER", 1); }
-.               { column_index += yyleng; }
+{number}            { process_token("TK_NUMBER", 1); }
+{identifier}        { process_token("TK_IDENTIFIER", 1); }
+
+.                   { column_index += yyleng; }
 
 %%
 /* ========================= Seção de código C ========================= */

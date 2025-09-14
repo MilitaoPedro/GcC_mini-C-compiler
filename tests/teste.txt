@@ -15,6 +15,11 @@ inteiro*/
 
 if
       while
+
+123.45
+12
+            1e79
+ 1E65
 fim 
 
 .
