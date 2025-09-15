@@ -1,3 +1,4 @@
+/* ======================== Seção de definições ======================== */
 %option noyywrap yylineno
 %{
 #include <stdio.h>
@@ -244,6 +245,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Uso: %s <arquivo>\n", argv[0]);
         return 1;
     }
+    
     
     yyin = fopen(argv[1], "r");
     if (!yyin) {
