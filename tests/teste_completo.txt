@@ -1,0 +1,68 @@
+// Teste completo do analisador léxico
+// Este arquivo testa todos os elementos da linguagem
+
+/* 
+
+   Comentário de múltiplas linhas
+   para testar o reconhecimento
+   de comentários 
+   
+*/
+
+int main() {
+    // Declarações de variáveis
+    int numero = 42;
+    int not_cientf = 12e5;
+    int valor_negativo = -15;
+    int neg_not_cientf = -15e12;
+    bool flag = true;
+    bool outro_flag = false;
+    
+    // Teste de identificadores
+    int variavel_teste;
+    int x, y, z;
+
+    // Teste identificadores inválidos
+    bool 1inr = 10;
+    int ahoba@ = 13;
+    
+    // Operadores aritméticos
+    int soma = x + y;
+    int subtracao = x - y;
+    int multiplicacao = x * y;
+    int divisao = x / y;
+    int modulo = x % y;
+    
+    // Operadores relacionais
+    if (x == y) {
+        print(Iguais);
+    } else if (x != y) {
+        print(Diferentes);
+    }
+    
+    if (x < y && x <= 10) {
+        print(Menor);
+    }
+    
+    if (x > y || x >= 100) {
+        print(Maior);
+    }
+    
+    // Operadores lógicos
+    bool resultado = !flag;
+    bool combinado = flag && outro_flag;
+    bool alternativo = flag || outro_flag;
+    
+    // Estruturas de controle
+    while (x < 10) {
+        x = x + 1;
+        read(valor_negativo);
+    }
+    
+    // Teste de todos os símbolos de pontuação
+    if (x > 0) {
+        print(Positivo);
+    } else {
+        print(Nao positivo);
+    }
+}

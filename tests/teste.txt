@@ -1,6 +1,9 @@
 // Arquivo de teste revisado para o Analisador Léxico.
 // Focado apenas nas palavras-chave e tokens definidos na linguagem.
 
+<<<<<<< HEAD
+fim
+=======
 /*
   Este é um comentário de múltiplas linhas.
   Ele testa a capacidade do analisador de ignorar blocos inteiros,
@@ -49,3 +52,4 @@ void main() {
     a = b ? 5 : 10;          // Erro: ? e :
     8val = 7;
 }
+>>>>>>> main
