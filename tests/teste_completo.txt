@@ -12,9 +12,9 @@
 int main() {
     // Declarações de variáveis
     int numero = 42;
-    int notacao_cientifica = 12e5;
+    int not_cientf = 12e5;
     int valor_negativo = -15;
-    int notacao_cientifica_negativa = -15e12;
+    int neg_not_cientf = -15e12;
     bool flag = true;
     bool outro_flag = false;
     
