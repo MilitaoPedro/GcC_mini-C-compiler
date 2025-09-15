@@ -87,5 +87,4 @@ src/scanner tests/teste.txt
 ### Projetos futuros
 - Implementar _rehash_ para a tabela hash
 - Suporte a literais de string: adicionar regra `"[^"\n]*"` (e escapar adequadamente) se desejar reconhecer strings.
-- Ordenação da tabela de símbolos: coletar e ordenar por `lexeme` com `qsort` antes de imprimir.
-- Ajuste de `HASH_SIZE`: caso a tabela cresça muito, considere aumentar para reduzir colisões.
+- Implementação de análise sintática e semântica

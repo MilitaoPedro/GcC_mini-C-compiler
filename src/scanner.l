@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BOLD_RED "\033[1;31m"
+#define BOLD_GREEN "\033[1;32m"
+#define RESET_COLOR "\033[0;0m"
+
 /* Estrutura para a tabela de símbolos */
 typedef struct symbol {
     char *lexeme;
@@ -38,7 +42,7 @@ FILE *yyout;
 DIGIT       [0-9]
 LETTER      [a-zA-Z]
 IDENTIFIER  {LETTER}({LETTER}|{DIGIT}|_)*
-INTEGER     -?{DIGIT}+
+INTEGER     -?{DIGIT}+(e{DIGIT}+)?
 WHITESPACE  [ \t]+
 NEWLINE     \n
 
@@ -48,7 +52,6 @@ NEWLINE     \n
 "/*"([^*]|\*+[^*/])*\*+"/"  { 
     for(int i = 0; yytext[i]; i++) {
         if(yytext[i] == '\n') {
-            yylineno++;
             column_num = 1;
         } else {
             column_num++;
@@ -90,14 +93,14 @@ NEWLINE     \n
 "{"             { print_token("LBRACE", yytext); column_num += yyleng; }
 "}"             { print_token("RBRACE", yytext); column_num += yyleng; }
 
+{INTEGER}       { print_token("INTEGER", yytext); insert_symbol(yytext, "INTEGER"); column_num += yyleng; }
+
 {DIGIT}+({LETTER}|_)+({LETTER}|{DIGIT}|_)* {
     char error_msg[140];
     sprintf(error_msg, "Número inválido: sufixo inválido em literal inteiro '%s'", yytext);
     report_error(error_msg);
     column_num += yyleng;
 }
-
-{INTEGER}       { print_token("INTEGER", yytext); insert_symbol(yytext, "INTEGER"); column_num += yyleng; }
 
 {IDENTIFIER}    { print_token("IDENTIFIER", yytext); insert_symbol(yytext, "IDENTIFIER"); column_num += yyleng; }
 
@@ -163,7 +166,7 @@ void print_token(char *token_type, char *lexeme) {
 
 /* Reportar erro */
 void report_error(char *message) {
-    fprintf(stderr, "\033[1;31mERRO: %s na linha %d, coluna %d\033[0m\n", message, yylineno, column_num);
+    fprintf(stderr, BOLD_RED "ERRO: %s na linha %d, coluna %d\n" RESET_COLOR, message, yylineno, column_num);
     error_count++;
 }
 
@@ -245,10 +248,10 @@ int main(int argc, char *argv[]) {
     fclose(yyin);
     
     if (error_count == 0) {
-        printf("\n\033[1;32mAnálise concluída com sucesso!\033[0m\n");
+        printf(BOLD_GREEN "\nAnálise concluída com sucesso!\n" RESET_COLOR);
         return 0;
     } else {
-        printf("\n\033[1;31mAnálise concluída com %d erro(s).\033[0m\n", error_count);
+        printf(BOLD_RED "\nAnálise concluída com %d erro(s)." RESET_COLOR, error_count);
         return 1;
     }
 }

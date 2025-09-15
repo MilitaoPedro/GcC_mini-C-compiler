@@ -1,14 +1,20 @@
 // Teste completo do analisador léxico
 // Este arquivo testa todos os elementos da linguagem
 
-/* Comentário de múltiplas linhas
+/* 
+
+   Comentário de múltiplas linhas
    para testar o reconhecimento
-   de comentários */
+   de comentários 
+   
+*/
 
 int main() {
     // Declarações de variáveis
     int numero = 42;
+    int notacao_cientifica = 12e5;
     int valor_negativo = -15;
+    int notacao_cientifica_negativa = -15e12;
     bool flag = true;
     bool outro_flag = false;
     
@@ -60,4 +66,3 @@ int main() {
         print(Nao positivo);
     }
 }
-
