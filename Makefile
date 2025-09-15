@@ -1,7 +1,7 @@
 SRC=src
 LEX=$(SRC)/scanner.l
 EXEC=$(SRC)/scanner
-TEST=tests/teste_erros.txt
+TEST=tests/teste_validos.txt
 
 all: clean $(EXEC)
 	$(EXEC) $(TEST)

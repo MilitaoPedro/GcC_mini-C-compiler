@@ -90,13 +90,20 @@ NEWLINE     \n
 "{"             { print_token("LBRACE", yytext); column_num += yyleng; }
 "}"             { print_token("RBRACE", yytext); column_num += yyleng; }
 
+{DIGIT}+({LETTER}|_)+({LETTER}|{DIGIT}|_)* {
+    char error_msg[140];
+    sprintf(error_msg, "Número inválido: sufixo inválido em literal inteiro '%s'", yytext);
+    report_error(error_msg);
+    column_num += yyleng;
+}
+
 {INTEGER}       { print_token("INTEGER", yytext); insert_symbol(yytext, "INTEGER"); column_num += yyleng; }
 
 {IDENTIFIER}    { print_token("IDENTIFIER", yytext); insert_symbol(yytext, "IDENTIFIER"); column_num += yyleng; }
 
 {WHITESPACE}    { column_num += yyleng; }
 
-{NEWLINE}       { yylineno++; column_num = 1; }
+{NEWLINE}       { column_num = 1; }
 
 .               { 
     char error_msg[100];
@@ -110,18 +117,16 @@ NEWLINE     \n
 /* Função hash simples */
 unsigned int hash_function(char *str) {
     unsigned int hash = 0;
-    while (*str) {
+    while (*str)
         hash = hash * 31 + *str++;
-    }
     return hash % HASH_SIZE;
 }
 
 /* Inserir símbolo na tabela */
 void insert_symbol(char *lexeme, char *token_type) {
     /* Verifica se já existe */
-    if (lookup_symbol(lexeme) != NULL) {
+    if (lookup_symbol(lexeme) != NULL)
         return; /* Já existe, não insere duplicata */
-    }
     
     unsigned int index = hash_function(lexeme);
     Symbol *new_symbol = (Symbol*)malloc(sizeof(Symbol));
@@ -158,10 +163,18 @@ void print_token(char *token_type, char *lexeme) {
 
 /* Reportar erro */
 void report_error(char *message) {
-    fprintf(stderr, "ERRO: %s na linha %d, coluna %d\n", message, yylineno, column_num);
+    fprintf(stderr, "\033[1;31mERRO: %s na linha %d, coluna %d\033[0m\n", message, yylineno, column_num);
     error_count++;
 }
 
+
+int compare_symbols(const void *a, const void *b) {
+    const Symbol *sa = *(const Symbol **)a;
+    const Symbol *sb = *(const Symbol **)b;
+    if (sa->line != sb->line) 
+        return sa->line - sb->line;
+    return sa->column - sb->column;
+}
 
 /* Imprimir tabela de símbolos */
 void print_symbol_table() {
@@ -171,14 +184,27 @@ void print_symbol_table() {
     printf("%-20s %-15s %-8s %-8s\n", "LEXEMA", "TIPO", "LINHA", "COLUNA");
     printf("------------------------------------------------------------\n");
     
+    /* Coletar símbolos em um vetor para ordenar por lexema */
+    int count = 0;
+    Symbol **all = (Symbol**)malloc(sizeof(Symbol*) * (symbol_count > 0 ? symbol_count : 1));
     for (int i = 0; i < HASH_SIZE; i++) {
         Symbol *current = symbol_table[i];
         while (current != NULL) {
-            printf("%-20s %-15s %-8d %-8d\n", 
-                   current->lexeme, current->token_type, 
-                   current->line, current->column);
+            all[count++] = current;
             current = current->next;
         }
+    }
+
+    /* Ordenar símbolos para impressão determinística */
+    if (count > 1) 
+        qsort(all, count, sizeof(Symbol*), compare_symbols);
+
+    /* Imprimir símbolos ordenados */
+    for (int i = 0; i < count; i++) {
+        Symbol *current = all[i];
+        printf("%-20s %-15s %-8d %-8d\n", 
+                current->lexeme, current->token_type, 
+                current->line, current->column);
     }
     printf("------------------------------------------------------------\n");
     printf("Total de símbolos: %d\n", symbol_count);
@@ -205,7 +231,7 @@ int main(int argc, char *argv[]) {
         symbol_table[i] = NULL;
     }
     
-    printf("ANÁLISE LÉXICA\n");
+    printf("\n\nANÁLISE LÉXICA\n");
     printf("============================================================\n");
     printf("%-15s %-15s %-12s %-8s\n", "TOKEN", "LEXEMA", "POSIÇÃO", "");
     printf("------------------------------------------------------------\n");
@@ -219,10 +245,10 @@ int main(int argc, char *argv[]) {
     fclose(yyin);
     
     if (error_count == 0) {
-        printf("\nAnálise concluída com sucesso!\n");
+        printf("\n\033[1;32mAnálise concluída com sucesso!\033[0m\n");
         return 0;
     } else {
-        printf("\nAnálise concluída com %d erro(s).\n", error_count);
+        printf("\n\033[1;31mAnálise concluída com %d erro(s).\033[0m\n", error_count);
         return 1;
     }
 }

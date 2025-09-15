@@ -1,9 +1,5 @@
 // Teste completo do analisador léxico
-// Este arquivo testa todos os elementos da linguagem
-
-/* Comentário de múltiplas linhas
-   para testar o reconhecimento
-   de comentários */
+// Este arquivo testa todos os elementos da válidos da linguagem
 
 int main() {
     // Declarações de variáveis
@@ -15,10 +11,6 @@ int main() {
     // Teste de identificadores
     int variavel_teste;
     int x, y, z;
-
-    // Teste identificadores inválidos
-    bool 1inr = 10;
-    int ahoba@ = 13;
     
     // Operadores aritméticos
     int soma = x + y;
@@ -60,4 +52,3 @@ int main() {
         print(Nao positivo);
     }
 }
-
