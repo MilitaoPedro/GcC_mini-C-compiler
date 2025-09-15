@@ -6,9 +6,15 @@
 #include <string.h>
 #include "tokens.h"
 
-#define BOLD_RED "\033[1;31m"
-#define BOLD_GREEN "\033[1;32m"
-#define RESET_COLOR "\033[0;0m"
+/* Definições de cores ANSI */
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define BOLD    "\033[1m"
 
 /* Tabela de símbolos (declaração e estado) */
 #define HASH_SIZE 101
@@ -181,13 +187,24 @@ const char* token_type_to_string(TokenType type) {
 
 /* Imprimir token com posição */
 void print_token(TokenType token_type, char *lexeme) {
-    printf("%-15s %-15s Linha: %3d Coluna: %3d\n", 
-           token_type_to_string(token_type), lexeme, yylineno, column_num);
+    printf("║ " YELLOW "[%03d:%03d]" RESET " ║ " CYAN "%-20s" RESET " ║ " GREEN "%-69s" RESET " ║\n",
+        yylineno,
+        column_num,
+        token_type_to_string(token_type),
+        lexeme
+        );
 }
 
 /* Reportar erro */
 void report_error(char *message) {
-    fprintf(stderr, BOLD_RED "ERRO: %s na linha %d, coluna %d\n" RESET_COLOR, message, yylineno, column_num);
+    char error_lexeme[64];
+    sprintf(error_lexeme, "'%s' <- %s", yytext, message);
+    // Imprime a linha de erro usando o mesmo formato de tabela
+    printf("║ " BOLD RED "[%03d:%03d]" RESET " ║ " BOLD RED "%-21s" RESET " ║ " BOLD RED "%-69s" RESET "  ║\n",
+            yylineno,
+            column_num,
+            "ERRO LÉXICO",  // O "tipo de token" do erro
+            error_lexeme);  // A descrição do erro
     error_count++;
 }
 
@@ -201,12 +218,12 @@ int compare_symbols(const void *a, const void *b) {
 
 /* Imprimir tabela de símbolos */
 void print_symbol_table() {
-    printf("\n============================================================\n");
-    printf("TABELA DE SÍMBOLOS\n");
-    printf("============================================================\n");
-    printf("%-20s %-15s %-8s %-8s\n", "LEXEMA", "TIPO", "LINHA", "COLUNA");
-    printf("------------------------------------------------------------\n");
-    
+    printf("╔════════════════════════════════════════════════════════════╗\n");
+    printf("║                     " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET "                     ║\n");
+    printf("╠═══════════╦═══════════════════════╦════════════════════════╣\n");
+    printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "%-21s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║\n", "[Lin:Col]", "LEXEMA", "TIPO");
+    printf("╠═══════════╬═══════════════════════╬════════════════════════╣\n");
+   
     // If para não fazer malloc se não houver símbolos
     if (symbol_count > 0) {
         /* Coletar símbolos em um vetor para ordenar por lexema */
@@ -227,16 +244,18 @@ void print_symbol_table() {
         /* Imprimir símbolos ordenados */
         for (int i = 0; i < count; i++) {
             Symbol *current = all[i];
-            printf("%-20s %-15s %-8d %-8d\n", 
-                    current->lexeme, token_type_to_string(current->token_type), 
-                    current->line, current->column);
+            
+            printf("║ " BOLD YELLOW "[%03d:%03d]" RESET " ║ " BOLD CYAN "%-21s" RESET " ║ " BOLD GREEN "%-21s" RESET "  ║\n",
+                    current->line,
+                    current->column,
+                    current->lexeme, 
+                    token_type_to_string(current->token_type));
         }
     } else;
 
-    printf("------------------------------------------------------------\n");
-    printf("Total de símbolos: %d\n", symbol_count);
-    if (error_count > 0) 
-        printf("Total de erros encontrados: %d\n", error_count);
+    printf("╠═══════════╩═══════════════════════╩════════════════════════╣\n");
+    printf("║ " BOLD "Total de símbolos:" RESET "%-40d ║\n", symbol_count);
+    printf("╚════════════════════════════════════════════════════════════╝\n");
 }
 
 /* Função principal */
@@ -258,24 +277,24 @@ int main(int argc, char *argv[]) {
         symbol_table[i] = NULL;
     }
     
-    printf("\n\nANÁLISE LÉXICA\n");
-    printf("============================================================\n");
-    printf("%-15s %-15s %-12s %-8s\n", "TOKEN", "LEXEMA", "POSIÇÃO", "");
-    printf("------------------------------------------------------------\n");
-    
+    printf("╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
+    printf("║                                              " BOLD MAGENTA "ANÁLISE LÉXICA" RESET "                                              ║\n");
+    printf("╠═══════════╦══════════════════════╦═══════════════════════════════════════════════════════════════════════╣\n");
+    printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "%-20s" RESET " ║ " BOLD GREEN "%-69s" RESET " ║\n", "[Lin:Col]", "TOKEN", "LEXEMA");
+    printf("╠═══════════╬══════════════════════╬═══════════════════════════════════════════════════════════════════════╣\n");
     /* Executar análise léxica */
     yylex();
-    
+    printf("╚═══════════╩══════════════════════╩═══════════════════════════════════════════════════════════════════════╝\n");
     /* Imprimir tabela de símbolos */
     print_symbol_table();
     
     fclose(yyin);
     
     if (error_count == 0) {
-        printf(BOLD_GREEN "\nAnálise concluída com sucesso!\n" RESET_COLOR);
+        printf(BOLD GREEN "\nAnálise concluída com sucesso!\n" RESET);
         return 0;
     } else {
-        printf(BOLD_RED "\nAnálise concluída com %d erro(s)." RESET_COLOR, error_count);
+        printf(BOLD RED "\nAnálise concluída com %d erro(s).\n" RESET, error_count);
         return 1;
     }
 }
