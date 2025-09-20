@@ -17,8 +17,8 @@
 #define BOLD    "\033[1m"
 
 /* Tabela de símbolos (declaração e estado) */
-#define HASH_SIZE 101
-Symbol *symbol_table[HASH_SIZE];
+#define SYMBOL_TABLE_SIZE 999
+Symbol symbol_table[SYMBOL_TABLE_SIZE];
 int symbol_count = 0;
 
 /* Variáveis para controle de posição */
@@ -26,7 +26,6 @@ int column_num = 1;
 int error_count = 0;
 
 /* Protótipos das funções */
-unsigned int hash_function(char *str);
 void insert_symbol(char *lexeme, TokenType token_type);
 Symbol* lookup_symbol(char *lexeme);
 void print_symbol_table();
@@ -117,43 +116,29 @@ NEWLINE     \n
 
 %%
 
-/* Função hash simples */
-unsigned int hash_function(char *str) {
-    unsigned int hash = 0;
-    while (*str)
-        hash = hash * 31 + *str++;
-    return hash % HASH_SIZE;
-}
 
-/* Inserir símbolo na tabela */
+/* Inserir símbolo na tabela (array) */
 void insert_symbol(char *lexeme, TokenType token_type) {
-    /* Verifica se já existe */
     if (lookup_symbol(lexeme) != NULL)
         return; /* Já existe, não insere duplicata */
-    
-    unsigned int index = hash_function(lexeme);
-    Symbol *new_symbol = (Symbol*)malloc(sizeof(Symbol));
-    
-    new_symbol->lexeme = strdup(lexeme);
-    new_symbol->token_type = token_type;
-    new_symbol->line = yylineno;
-    new_symbol->column = column_num;
-    new_symbol->next = symbol_table[index];
-    
-    symbol_table[index] = new_symbol;
+    if (symbol_count >= SYMBOL_TABLE_SIZE) {
+        fprintf(stderr, "Symbol table overflow!\n");
+        exit(1);
+    }
+    symbol_table[symbol_count].id = symbol_count + 1;
+    symbol_table[symbol_count].lexeme = strdup(lexeme);
+    symbol_table[symbol_count].token_type = token_type;
+    symbol_table[symbol_count].line = yylineno;
+    symbol_table[symbol_count].column = column_num;
     symbol_count++;
 }
 
-/* Buscar símbolo na tabela */
+/* Buscar símbolo na tabela (array) */
 Symbol* lookup_symbol(char *lexeme) {
-    unsigned int index = hash_function(lexeme);
-    Symbol *current = symbol_table[index];
-    
-    while (current != NULL) {
-        if (strcmp(current->lexeme, lexeme) == 0) {
-            return current;
+    for (int i = 0; i < symbol_count; i++) {
+        if (strcmp(symbol_table[i].lexeme, lexeme) == 0) {
+            return &symbol_table[i];
         }
-        current = current->next;
     }
     return NULL;
 }
@@ -216,44 +201,22 @@ int compare_symbols(const void *a, const void *b) {
 
 /* Imprimir tabela de símbolos */
 void print_symbol_table() {
-    printf("╔════════════════════════════════════════════════════════════╗\n");
-    printf("║                     " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET "                     ║\n");
-    printf("╠═══════════╦═══════════════════════╦════════════════════════╣\n");
-    printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "%-21s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║\n", "[Lin:Col]", "LEXEMA", "TIPO");
-    printf("╠═══════════╬═══════════════════════╬════════════════════════╣\n");
-   
-    // If para não fazer malloc se não houver símbolos
-    if (symbol_count > 0) {
-        /* Coletar símbolos em um vetor para ordenar por lexema */
-        int count = 0;
-        Symbol **all = (Symbol**)malloc(sizeof(Symbol*) * (symbol_count > 0 ? symbol_count : 1));
-        for (int i = 0; i < HASH_SIZE; i++) {
-            Symbol *current = symbol_table[i];
-            while (current != NULL) {
-                all[count++] = current;
-                current = current->next;
-            }
-        }
-
-        /* Ordenar símbolos para impressão determinística */
-        if (count > 1) 
-            qsort(all, count, sizeof(Symbol*), compare_symbols);
-
-        /* Imprimir símbolos ordenados */
-        for (int i = 0; i < count; i++) {
-            Symbol *current = all[i];
-            
-            printf("║ " BOLD YELLOW "[%03d:%03d]" RESET " ║ " BOLD CYAN "%-21s" RESET " ║ " BOLD GREEN "%-21s" RESET "  ║\n",
-                    current->line,
-                    current->column,
-                    current->lexeme, 
-                    token_type_to_string(current->token_type));
-        }
-    } else;
-
-    printf("╠═══════════╩═══════════════════════╩════════════════════════╣\n");
-    printf("║ " BOLD "Total de símbolos:" RESET "%-40d ║\n", symbol_count);
-    printf("╚════════════════════════════════════════════════════════════╝\n");
+    printf("╔════════════════════════════════════════════════════════════════════╗\n");
+    printf("║                     " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET"                             ║\n");
+    printf("╠═══════╦═══════════╦═══════════════════════╦════════════════════════╣\n");
+    printf("║ " BOLD BLUE "%-5s" RESET " ║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "%-21s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║\n", "[ID]", "[Lin:Col]", "LEXEMA", "TIPO");
+    printf("╠═══════╬═══════════╬═══════════════════════╬════════════════════════╣\n");
+    for (int i = 0; i < symbol_count; i++) {
+        printf("║ " BOLD BLUE "[%03d]" RESET " ║ " BOLD YELLOW "[%03d:%03d]" RESET " ║ " BOLD CYAN "%-21s" RESET " ║ " BOLD GREEN "%-21s" RESET "  ║\n",
+                symbol_table[i].id,
+                symbol_table[i].line,
+                symbol_table[i].column,
+                symbol_table[i].lexeme, 
+                token_type_to_string(symbol_table[i].token_type));
+    }
+    printf("╠═══════╩═══════════╩═══════════════════════╩════════════════════════╣\n");
+    printf("║ " BOLD "Total de símbolos:" RESET "%-40d         ║\n", symbol_count);
+    printf("╚════════════════════════════════════════════════════════════════════╝\n");
 }
 
 /* Função principal */
@@ -270,10 +233,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    /* Inicializar tabela de símbolos */
-    for (int i = 0; i < HASH_SIZE; i++) {
-        symbol_table[i] = NULL;
-    }
+    /* Inicializar tabela de símbolos (array) */
+    symbol_count = 0;
     
     printf("╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
     printf("║                                              " BOLD MAGENTA "ANÁLISE LÉXICA" RESET "                                              ║\n");
