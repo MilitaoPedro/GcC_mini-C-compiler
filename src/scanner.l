@@ -42,7 +42,7 @@ FILE *yyout;
 DIGIT       [0-9]
 LETTER      [a-zA-Z]
 IDENTIFIER  {LETTER}({LETTER}|{DIGIT}|_)*
-INTEGER     -?{DIGIT}+([+-]?e{DIGIT}+)?
+INTEGER     ((-[1-9])|{DIGIT}){DIGIT}*([+-]?e{DIGIT}+)?
 WHITESPACE  [ \t]+
 NEWLINE     \n
 
@@ -95,7 +95,7 @@ NEWLINE     \n
 
 {INTEGER}       { print_token(TK_INTEGER, yytext); column_num += yyleng; }
 
-{DIGIT}+({LETTER}|_)+({LETTER}|{DIGIT}|_)* {
+-?{DIGIT}+({LETTER}|_)+({LETTER}|{DIGIT}|_)* {
     char error_msg[140];
     sprintf(error_msg, "Número inválido: sufixo inválido em literal inteiro '%s'", yytext);
     report_error(error_msg);
