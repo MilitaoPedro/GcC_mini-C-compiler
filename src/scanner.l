@@ -251,8 +251,9 @@ int main(int argc, char *argv[]) {
     
     if (error_count == 0) {
         printf(BOLD GREEN "\nAnálise concluída com sucesso!\n" RESET);
-    } else {
-        printf(BOLD RED "\nAnálise concluída com %d erro(s).\n" RESET, error_count);
+        return 0;
     }
-    return 0;
+    
+    printf(BOLD RED "\nAnálise concluída com %d erro(s).\n" RESET, error_count);
+    return 1;
 }
