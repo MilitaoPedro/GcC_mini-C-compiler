@@ -1,0 +1,53 @@
+
+     int
+bool
+if
+   else
+           while
+                print
+read
+
+// Comentário de apenas um linha para testar a aplicação
+
+/* 
+
+    Comentário de mais de uma linha
+    Ele continua aqui
+    E aqui
+    **
+    E aqui
+    //
+    aqui também
+*/
+1e32
+true
+false
+   == 
+  != 
+<= 
+>= 
+ < 
+> 
+&& 
+ || 
+!
+  
+- 
+* 
+    / 
+% 
+= 
+    ; 
+, 
+ ( 
+) 
+    { 
+} 
+123
+    -456
+0
+ 7890
+var, var2
+       abc123
+A_B_C
+-0
