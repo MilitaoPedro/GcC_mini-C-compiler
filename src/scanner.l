@@ -197,14 +197,12 @@ void print_token(TokenType token_type, char *lexeme) {
 
 /* Reportar erro */
 void report_error(char *message) {
-    char error_lexeme[64];
-    sprintf(error_lexeme, "'%s' <- %s", yytext, message);
     // Imprime a linha de erro usando o mesmo formato de tabela
     printf("║ " BOLD RED "[%03d:%03d]" RESET " ║ " BOLD RED "%-21s" RESET " ║ " BOLD RED "%-69s" RESET "  ║\n",
             yylineno,
             column_num,
             "ERRO LÉXICO",  // O "tipo de token" do erro
-            error_lexeme);  // A descrição do erro
+            message);  // A descrição do erro
     error_count++;
 }
 
