@@ -10,11 +10,11 @@ typedef enum {
 
 /* Estrutura para a tabela de símbolos */
 typedef struct symbol {
+    int id;                 /* Identificador único do token na tabela de símbolos*/
     char *lexeme;           /* O texto do token ("int", "main", "x") */
     TokenType token_type;   /* Tipo do token (enum) */
     int line;               /* Linha onde aparece */
     int column;             /* Coluna onde inicia */
-    struct symbol *next;    /* Próximo na lista (para colisões) */
 } Symbol;
 
 #endif /* TOKENS_H */
