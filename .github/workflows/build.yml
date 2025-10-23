@@ -1,27 +1,46 @@
-name: Build and Test
+# Nome do seu workflow. Aparecerá na aba "Actions" do GitHub.
+name: Compilador CI
 
-on: [push, pull_request]
+# Define quando o workflow deve rodar.
+on:
+  # Roda em qualquer push para qualquer branch
+  push:
+    branches: [ "**" ]
+  # Roda em qualquer pull request para a branch 'main'
+  pull_request:
+    branches: [ "main" ]
 
+# Define os "trabalhos" (jobs) que o workflow vai executar.
 jobs:
+  # Nosso único trabalho é o 'build'
   build:
+    # Rodar em uma máquina virtual Ubuntu (padrão do Codespaces)
     runs-on: ubuntu-latest
+
+    # Define os passos sequenciais do trabalho
     steps:
-      - name: Checkout código
-        uses: actions/checkout@v3
+      # 1. Baixa o código do seu repositório para a máquina virtual
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
 
-      - name: Instalar flex, gcc e libfl-dev
-        run: sudo apt-get update && sudo apt-get install -y flex gcc libfl-dev
+      # 2. Instala as dependências (FLEX, BISON e bibliotecas)
+      - name: Instalar Dependências (flex, bison, libfl-dev)
+        run: |
+          sudo apt-get update
+          # Instala o flex, o bison, e a biblioteca de desenvolvimento do flex (-lfl)
+          sudo apt-get install -y flex bison libfl-dev
 
-      - name: Compilar com arquivo de teste válido
+      # 3. Compila o projeto usando o Makefile
+      - name: Compilar o Projeto
+        run: make
+        # O 'make' por padrão executa a regra 'all' do seu Makefile,
+        # que agora roda o bison, depois o flex, e depois o gcc.
+
+      # 4. (Opcional, mas recomendado) Fazer um "Teste de Fumaça"
+      #    Isso garante que o executável foi criado e não falha imediatamente.
+      - name: Executar Teste de Fumaça (Smoke Test)
         run: |
-          cd src
-          flex scanner.l
-          gcc lex.yy.c -o scanner -lfl
-          ./scanner ../tests/Valid_Toy_Test.txt
-      - name: Compilar com arquivo de teste inválido
-        run: |
-          cd src
-          flex scanner.l
-          gcc lex.yy.c -o scanner -lfl
-          ./scanner ../tests/Invalid_Toy_Test.txt
-        continue-on-error: true
+          # Cria um arquivo de teste simples (baseado na sua gramática dummy)
+          echo "print(variavel);" > smoke_test.txt
+          # Executa o compilador. Se ele falhar (retornar != 0), o workflow falha.
+          ./compilador smoke_test.txt
