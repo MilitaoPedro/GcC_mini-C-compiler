@@ -1,10 +1,12 @@
 /* ======================== Seção de definições ======================== */
-%option noyywrap yylineno
+%option noyywrap yylineno nounput noinput
 %{
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "tokens.h"
+#include "parser.tab.h"
 
 /* Definições de cores ANSI */
 #define RESET   "\033[0m"
@@ -26,15 +28,13 @@ int column_num = 1;
 int error_count = 0;
 
 /* Protótipos das funções */
-void insert_symbol(char *lexeme, TokenType token_type);
+void insert_symbol(char *lexeme, yytoken_kind_t token_type);
 Symbol* lookup_symbol(char *lexeme);
 void print_symbol_table();
-void print_token(TokenType token_type, char *lexeme);
+void print_token(yytoken_kind_t token_type, char *lexeme);
 void report_error(char *message);
-const char* token_type_to_string(TokenType type);
+const char* token_type_to_string(yytoken_kind_t type);
 
-FILE *yyin;
-FILE *yyout;
 %}
 
 /* Definições de padrões */
@@ -57,68 +57,69 @@ NEWLINE     \n
         }
     }
 }
-"int"           { print_token(TK_INT, yytext); column_num += yyleng; }
-"bool"          { print_token(TK_BOOL, yytext); column_num += yyleng; }
-"if"            { print_token(TK_IF, yytext); column_num += yyleng; }
-"else"          { print_token(TK_ELSE, yytext); column_num += yyleng; }
-"while"         { print_token(TK_WHILE, yytext); column_num += yyleng; }
-"print"         { print_token(TK_PRINT, yytext); column_num += yyleng; }
-"read"          { print_token(TK_READ, yytext); column_num += yyleng; }
-"true"          { print_token(TK_TRUE, yytext); column_num += yyleng; }
-"false"         { print_token(TK_FALSE, yytext); column_num += yyleng; }
+"int"           { print_token(TK_INT, yytext); column_num += yyleng; return TK_INT; }
+"bool"          { print_token(TK_BOOL, yytext); column_num += yyleng; return TK_BOOL; }
+"if"            { print_token(TK_IF, yytext); column_num += yyleng; return TK_IF; }
+"else"          { print_token(TK_ELSE, yytext); column_num += yyleng; return TK_ELSE; }
+"while"         { print_token(TK_WHILE, yytext); column_num += yyleng; return TK_WHILE; }
+"print"         { print_token(TK_PRINT, yytext); column_num += yyleng; return TK_PRINT; }
+"read"          { print_token(TK_READ, yytext); column_num += yyleng; return TK_READ; }
+"true"          { print_token(TK_TRUE, yytext); column_num += yyleng; return TK_TRUE; }
+"false"         { print_token(TK_FALSE, yytext); column_num += yyleng; return TK_FALSE; }
 
-"=="            { print_token(TK_RELOP, yytext); column_num += yyleng; }
-"!="            { print_token(TK_RELOP, yytext); column_num += yyleng; }
-"<="            { print_token(TK_RELOP, yytext); column_num += yyleng; }
-">="            { print_token(TK_RELOP, yytext); column_num += yyleng; }
-"<"             { print_token(TK_RELOP, yytext); column_num += yyleng; }
-">"             { print_token(TK_RELOP, yytext); column_num += yyleng; }
+"=="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
+"!="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
+"<="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
+">="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
+"<"             { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
+">"             { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
 
-"&&"            { print_token(TK_LOP, yytext); column_num += yyleng; }
-"||"            { print_token(TK_LOP, yytext); column_num += yyleng; }
-"!"             { print_token(TK_LOP, yytext); column_num += yyleng; }
+"&&"            { print_token(TK_LOP, yytext); column_num += yyleng; return TK_LOP; }
+"||"            { print_token(TK_LOP, yytext); column_num += yyleng; return TK_LOP; }
+"!"             { print_token(TK_LOP, yytext); column_num += yyleng; return TK_LOP; }
 
-"+"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; }
-"-"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; }
-"*"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; }
-"/"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; }
-"%"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; }
-"="             { print_token(TK_ARITHOP, yytext); column_num += yyleng; }
+"+"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
+"-"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
+"*"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
+"/"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
+"%"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
+"="             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
 
-";"             { print_token(TK_SEMICOLON, yytext); column_num += yyleng; }
-","             { print_token(TK_COMMA, yytext); column_num += yyleng; }
-"("             { print_token(TK_LPAREN, yytext); column_num += yyleng; }
-")"             { print_token(TK_RPAREN, yytext); column_num += yyleng; }
-"{"             { print_token(TK_LBRACE, yytext); column_num += yyleng; }
-"}"             { print_token(TK_RBRACE, yytext); column_num += yyleng; }
+";"             { print_token(TK_SEMICOLON, yytext); column_num += yyleng; return TK_SEMICOLON; }
+","             { print_token(TK_COMMA, yytext); column_num += yyleng; return TK_COMMA; }
+"("             { print_token(TK_LPAREN, yytext); column_num += yyleng; return TK_LPAREN; }
+")"             { print_token(TK_RPAREN, yytext); column_num += yyleng; return TK_RPAREN; }
+"{"             { print_token(TK_LBRACE, yytext); column_num += yyleng; return TK_LBRACE; }
+"}"             { print_token(TK_RBRACE, yytext); column_num += yyleng; return TK_RBRACE; }
 
-{INTEGER}       { print_token(TK_INTEGER, yytext); column_num += yyleng; }
+{INTEGER}       { print_token(TK_INTEGER, yytext); column_num += yyleng; return TK_INTEGER; }
+
 
 -?{DIGIT}+({LETTER}|_)+({LETTER}|{DIGIT}|_)* {
     char error_msg[140];
-    sprintf(error_msg, "Número inválido: sufixo inválido em literal inteiro '%s'", yytext);
+    sprintf(error_msg, "Número invalido: sufixo invalido em literal inteiro '%s'", yytext);
     report_error(error_msg);
     column_num += yyleng;
+    /* Sem return, o parser não recebe token */
 }
 
-{IDENTIFIER}    { print_token(TK_ID, yytext); insert_symbol(yytext, TK_ID); column_num += yyleng; }
+{IDENTIFIER}    { print_token(TK_ID, yytext); insert_symbol(yytext, TK_ID); column_num += yyleng; return TK_ID; }
 
 {WHITESPACE}    { column_num += yyleng; }
 
 {NEWLINE}       { column_num = 1; }
-
 .               { 
     char error_msg[100];
     sprintf(error_msg, "Caractere não reconhecido: '%s'", yytext);
     report_error(error_msg);
     column_num += yyleng;
+    /* Sem return */
 }
 
 %%
 
-
 /* Inserir símbolo na tabela (array) */
-void insert_symbol(char *lexeme, TokenType token_type) {
+void insert_symbol(char *lexeme, yytoken_kind_t token_type) {
     if (lookup_symbol(lexeme) != NULL)
         return; /* Já existe, não insere duplicata */
     if (symbol_count >= SYMBOL_TABLE_SIZE) {
@@ -144,7 +145,7 @@ Symbol* lookup_symbol(char *lexeme) {
 }
 
 /* Converter enum em string para impressão */
-const char* token_type_to_string(TokenType type) {
+const char* token_type_to_string(yytoken_kind_t type) {
     switch (type) {
         case TK_INT: return "TK_INT";
         case TK_BOOL: return "TK_BOOL";
@@ -171,7 +172,7 @@ const char* token_type_to_string(TokenType type) {
 }
 
 /* Imprimir token com posição */
-void print_token(TokenType token_type, char *lexeme) {
+void print_token(yytoken_kind_t token_type, char *lexeme) {
     printf("║ " YELLOW "[%03d:%03d]" RESET " ║ " CYAN "%-20s" RESET " ║ " GREEN "%-69s" RESET " ║\n",
         yylineno,
         column_num,
@@ -202,7 +203,7 @@ int compare_symbols(const void *a, const void *b) {
 /* Imprimir tabela de símbolos */
 void print_symbol_table() {
     printf("╔════════════════════════════════════════════════════════════════════╗\n");
-    printf("║                     " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET"                             ║\n");
+    printf("║                         " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET"                         ║\n");
     printf("╠═══════╦═══════════╦═══════════════════════╦════════════════════════╣\n");
     printf("║ " BOLD BLUE "%-5s" RESET " ║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "%-21s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║\n", "[ID]", "[Lin:Col]", "LEXEMA", "TIPO");
     printf("╠═══════╬═══════════╬═══════════════════════╬════════════════════════╣\n");
@@ -217,43 +218,4 @@ void print_symbol_table() {
     printf("╠═══════╩═══════════╩═══════════════════════╩════════════════════════╣\n");
     printf("║ " BOLD "Total de símbolos:" RESET "%-40d         ║\n", symbol_count);
     printf("╚════════════════════════════════════════════════════════════════════╝\n");
-}
-
-/* Função principal */
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Uso: %s <arquivo>\n", argv[0]);
-        return 1;
-    }
-    
-    
-    yyin = fopen(argv[1], "r");
-    if (!yyin) {
-        perror("Erro ao abrir o arquivo");
-        return 1;
-    }
-    
-    /* Inicializar tabela de símbolos (array) */
-    symbol_count = 0;
-    
-    printf("╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
-    printf("║                                              " BOLD MAGENTA "ANÁLISE LÉXICA" RESET "                                              ║\n");
-    printf("╠═══════════╦══════════════════════╦═══════════════════════════════════════════════════════════════════════╣\n");
-    printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "%-20s" RESET " ║ " BOLD GREEN "%-69s" RESET " ║\n", "[Lin:Col]", "TOKEN", "LEXEMA");
-    printf("╠═══════════╬══════════════════════╬═══════════════════════════════════════════════════════════════════════╣\n");
-    /* Executar análise léxica */
-    yylex();
-    printf("╚═══════════╩══════════════════════╩═══════════════════════════════════════════════════════════════════════╝\n");
-    /* Imprimir tabela de símbolos */
-    print_symbol_table();
-    
-    fclose(yyin);
-    
-    if (error_count == 0) {
-        printf(BOLD GREEN "\nAnálise concluída com sucesso!\n" RESET);
-        return 0;
-    }
-    
-    printf(BOLD RED "\nAnálise concluída com %d erro(s).\n" RESET, error_count);
-    return 1;
 }
