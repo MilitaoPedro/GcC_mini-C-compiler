@@ -43,4 +43,4 @@ jobs:
           # Cria um arquivo de teste simples (baseado na sua gramática dummy)
           echo "print(variavel);" > smoke_test.txt
           # Executa o compilador. Se ele falhar (retornar != 0), o workflow falha.
-          ./compilador smoke_test.txt
+          src/compilador smoke_test.txt
