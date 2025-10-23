@@ -40,7 +40,5 @@ jobs:
       #    Isso garante que o executável foi criado e não falha imediatamente.
       - name: Executar Teste de Fumaça (Smoke Test)
         run: |
-          # Cria um arquivo de teste simples (baseado na sua gramática dummy)
-          echo "print(variavel);" > smoke_test.txt
           # Executa o compilador. Se ele falhar (retornar != 0), o workflow falha.
-          src/compilador smoke_test.txt
+          src/compilador ./tests/Valid_Toy_Test.txt
