@@ -1,3 +1,7 @@
 .idea
-src/*.c
-src/scanner
+src/lex.yy.c
+src/parser.tab.c
+src/compilador
+src/debug_trace.log
+src/trace_printer.o
+src/parser.tab.h
