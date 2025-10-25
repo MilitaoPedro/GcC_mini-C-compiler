@@ -1,7 +1,38 @@
-// teste_if_else.mc
-// Teste focado nas regras fatoradas de if/else
+// teste_compacto.mc
+// Testa todas as regras implementadas de forma concisa.
 
-    int a;
-    bool b;
-    a = 1;
-    b = true;
+
+    int counter, limit;
+    bool active;
+
+    read(limit);    // Testa read
+    counter = 0;    // Testa assignment
+    active = true;  // Testa assignment com bool
+
+    if (active) { // Testa if com block
+        
+        limit = 10; // Testa assignment dentro do if
+        
+        if (limit) // Testa if aninhado (sem else)
+            print(counter); // Testa print com comando único
+
+    } else { // Testa else com block
+        
+        while (counter) { // Testa while com expression ID
+            
+            print(counter); // Testa print dentro do while
+            counter = 0;    // Testa assignment dentro do while
+            
+            // Testa if/else aninhado dentro do else/while
+            if (false) 
+                active = true; 
+            else 
+                active = false; // Este else pertence ao if(false)
+        }
+    }
+    
+    // Testa while com comando único (requer que 'then' possa ser 'statement')
+    while (active) 
+        counter = 1; 
+
+ // Fim do programa
