@@ -1,0 +1,4 @@
+int x;
+bool y, z;
+8val
+{ teste

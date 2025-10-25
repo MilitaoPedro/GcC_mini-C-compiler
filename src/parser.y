@@ -10,11 +10,15 @@
 extern int yylex();
 extern FILE *yyin;
 extern int yylineno; // yylineno é fornecido pelo Flex
-extern int error_count;
+extern int lexic_error_count;
 extern int column_num;
+
+int sintatic_error_count = 0;
 
 /* Funções auxiliares que ainda estão no scanner.l */
 extern void print_symbol_table();
+
+void add_reduce_trace(const char *rule);
 
 /* Definições de cores ANSI */
 #define RESET   "\033[0m"
@@ -28,6 +32,9 @@ extern void print_symbol_table();
 
 /* A função de erro que o Bison vai chamar */
 void yyerror(const char *s);
+
+/* Variavel para impressão da análise sintática*/
+char g_full_trace[65536] = "AÇÃO\tDETALHE\n";
 %}
 
 /* ----- Definição de Tokens ----- */
@@ -36,20 +43,36 @@ void yyerror(const char *s);
 %token TK_SEMICOLON TK_COMMA TK_LPAREN TK_RPAREN TK_LBRACE TK_RBRACE
 %token TK_INTEGER TK_ID
 
+%debug
+
 /* Ponto de partida da gramática */
 
 /* ========================== Seção de Regras (Gramática) ========================== */
 %%
 
-program: program token_qualquer 
-    |
-    ;
+program:        statements;                     
 
-token_qualquer: TK_INT | TK_BOOL | TK_IF | TK_ELSE | TK_WHILE | TK_PRINT
-    | TK_READ | TK_TRUE | TK_FALSE | TK_RELOP | TK_LOP | TK_ARITHOP
-    | TK_SEMICOLON | TK_COMMA | TK_LPAREN | TK_RPAREN | TK_LBRACE | TK_RBRACE
-    | TK_INTEGER | TK_ID
-    ;
+
+statements:                                     {add_reduce_trace(GREEN "statements ->"RESET);}
+                | statements statement          {add_reduce_trace(GREEN "statements -> statements statemen"RESET);}
+                ;
+
+statement:      declaration                     {add_reduce_trace(GREEN "statement -> declaration"RESET);}
+                ;
+
+block:          TK_LBRACE statements TK_RBRACE  {add_reduce_trace(GREEN "block -> TK_LBRACE statements TK_RBRACE"RESET);}
+                ;
+
+declaration:    type id_list TK_SEMICOLON       {add_reduce_trace(GREEN "declaration -> type id_list TK_SEMICOLON"RESET);}
+                ;
+
+type:           TK_INT                          {add_reduce_trace(GREEN "type -> TK_INT"RESET);}
+                | TK_BOOL                       {add_reduce_trace(GREEN "type -> TK_BOOL"RESET);}
+                ;
+
+id_list:        TK_ID                           {add_reduce_trace(GREEN "id_list -> TK_ID"RESET);}
+                | id_list TK_COMMA TK_ID        {add_reduce_trace(GREEN "id_list -> id_list TK_COMMA TK_ID"RESET);}
+                ;
 
 %%
 /* ========================= Seção de Código C ========================= */
@@ -58,12 +81,24 @@ token_qualquer: TK_INT | TK_BOOL | TK_IF | TK_ELSE | TK_WHILE | TK_PRINT
     Por enquanto, vamos apenas imprimir uma mensagem simples.
 */
 void yyerror(const char *s) {
-    // Reutiliza o formato de tabela para erros sintáticos
-    printf("║ " BOLD RED "[%03d:%03d]" RESET " ║ " BOLD RED "%-21s" RESET " ║ " BOLD RED "%-69s" RESET "  ║\n",
-           yylineno, column_num, "ERRO SINTÁTICO", s);
-    error_count++;
+    char temp_str[256];
+    
+    // Formata a string de erro no formato do trace: "[LIN:COL]\tAÇÃO\tDETALHE\n"
+    sprintf(temp_str, "[%03d:%03d]\tERRO\t%s\n", 
+            yylineno, 
+            column_num, 
+            s); // 's' é a mensagem, ex: "syntax error"
+    
+    // Adiciona o erro ao trace global
+    strcat(g_full_trace, temp_str);
+    sintatic_error_count++;
 }
 
+void add_reduce_trace(const char *rule) {
+    char temp_str[100];
+    sprintf(temp_str, "[%03d:%03d]\tREDUCE\t%s\n", yylineno, column_num, rule);
+    strcat(g_full_trace, temp_str);
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -86,7 +121,7 @@ int main(int argc, char *argv[]) {
     printf("╠═══════════╦══════════════════════╦═══════════════════════════════════════════════════════════════════════╣\n");
     printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "%-20s" RESET " ║ " BOLD GREEN "%-69s" RESET " ║\n", "[Lin:Col]", "TOKEN", "LEXEMA");
     printf("╠═══════════╬══════════════════════╬═══════════════════════════════════════════════════════════════════════╣\n");
-
+    
     /* MUDANÇA CRÍTICA:
         Em vez de chamar yylex() em um loop, nós chamamos yyparse() UMA VEZ.
         O yyparse() é quem vai chamar o yylex() internamente para pedir tokens.
@@ -95,16 +130,53 @@ int main(int argc, char *argv[]) {
 
     printf("╚═══════════╩══════════════════════╩═══════════════════════════════════════════════════════════════════════╝\n");
     
+    if (lexic_error_count == 0) {
+        printf(BOLD GREEN "\nAnálise Léxica concluída com sucesso!\n" RESET);
+    } else{
+        printf(BOLD RED "\nAnálise Léxica concluída com %d erro(s).\n" RESET, lexic_error_count);
+    }
+
+
+    /* ----- IMPRIME A NOVA TABELA DE TRACE SHIFT-REDUCE ----- */
+    printf("\n"); // Adiciona um espaço
+    printf("╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
+    printf("║                                      " BOLD MAGENTA "ANÁLISE SINTÁTICA (Shift-Reduce)" RESET "                                    ║\n");
+    printf("╠═══════════╦═══════════╦══════════════════════════════════════════════════════════════════════════════════╣\n");
+    printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "  %-9s" RESET " ║ " BOLD GREEN "%-82s" RESET " ║\n", "[Lin:Col]", "AÇÃO", "DETALHE (Token ou Produção)");
+    printf("╠═══════════╬═══════════╬══════════════════════════════════════════════════════════════════════════════════╣\n");
+    
+    // Pula o cabeçalho que colocamos na string
+    char* line = strtok(g_full_trace, "\n");
+    line = strtok(NULL, "\n"); // Pega a primeira linha real
+    
+    while (line != NULL) {
+        char position[20], action[100], detail[200];
+        // Lê a string "POSICAO \t ACAO \t DETALHE"
+        if (sscanf(line, "%[^\t]\t%[^\t]\t%[^\n]", position, action, detail) == 3) {
+             
+             if (strcmp(action, "ERRO") == 0) {
+                 // Imprime a linha de erro em VERMELHO
+                 printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD RED "%-9s" RESET " ║ " BOLD RED "%-80s" RESET " ║\n", 
+                        position, action, detail);
+             } else {
+                if(strcmp(action, "REDUCE") == 0){
+                 // Imprime REDUCE (formato normal)
+                    printf("║ " BOLD YELLOW "%-9s" RESET " ║ " CYAN "%-9s" RESET " ║ " GREEN "%-89s" RESET " ║\n", 
+                        position, action, detail);
+                } else{
+                    printf("║ " BOLD YELLOW "%-9s" RESET " ║ " CYAN "%-9s" RESET " ║ " GREEN "%-80s" RESET " ║\n", 
+                        position, action, detail);
+                }
+             }
+        }
+        line = strtok(NULL, "\n");
+    }
+
+    printf("╚═══════════╩═══════════╩══════════════════════════════════════════════════════════════════════════════════╝\n");
     /* Imprimir tabela de símbolos */
     print_symbol_table();
     
     fclose(yyin);
     
-    if (error_count == 0) {
-        printf(BOLD GREEN "\nAnálise concluída com sucesso!\n" RESET);
-        return 0;
-    }
-    
-    printf(BOLD RED "\nAnálise concluída com %d erro(s).\n" RESET, error_count);
     return 1;
 }
