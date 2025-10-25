@@ -148,30 +148,57 @@ Symbol* lookup_symbol(char *lexeme) {
     return NULL;
 }
 
-/* Converter enum em string para impressão */
+/* Converter enum em string para impressão *//* Converter enum em string para impressão (Atualizado) */
 const char* token_type_to_string(yytoken_kind_t type) {
     switch (type) {
-        case TK_INT: return "TK_INT";
-        case TK_BOOL: return "TK_BOOL";
-        case TK_IF: return "TK_IF";
-        case TK_ELSE: return "TK_ELSE";
-        case TK_WHILE: return "TK_WHILE";
-        case TK_PRINT: return "TK_PRINT";
-        case TK_READ: return "TK_READ";
-        case TK_TRUE: return "TK_TRUE";
-        case TK_FALSE: return "TK_FALSE";
-        case TK_RELOP: return "TK_RELOP";
-        case TK_LOP: return "TK_LOP";
-        case TK_ARITHOP: return "TK_ARITHOP";
-        case TK_SEMICOLON: return "TK_SEMICOLON";
-        case TK_COMMA: return "TK_COMMA";
-        case TK_LPAREN: return "TK_LPAREN";
-        case TK_RPAREN: return "TK_RPAREN";
-        case TK_LBRACE: return "TK_LBRACE";
-        case TK_RBRACE: return "TK_RBRACE";
-        case TK_INTEGER: return "TK_INTEGER";
-        case TK_ID: return "TK_ID";
-        default: return "UNKNOWN";
+        /* Palavras-chave e Tipos */
+        case TK_INT:         return "TK_INT_TYPE"; // Renomeei para clareza
+        case TK_BOOL:        return "TK_BOOL_TYPE"; // Renomeei para clareza
+        case TK_IF:          return "TK_IF";
+        case TK_ELSE:        return "TK_ELSE";
+        case TK_WHILE:       return "TK_WHILE";
+        case TK_PRINT:       return "TK_PRINT";
+        case TK_READ:        return "TK_READ";
+        case TK_TRUE:        return "TK_TRUE";
+        case TK_FALSE:       return "TK_FALSE";
+
+        /* Operadores Relacionais */
+        case TK_EQ:          return "TK_EQ";          // ==
+        case TK_NE:          return "TK_NE";          // !=
+        case TK_LE:          return "TK_LE";          // <=
+        case TK_GE:          return "TK_GE";          // >=
+        case TK_LT:          return "TK_LT";          // <
+        case TK_GT:          return "TK_GT";          // >
+
+        /* Operadores Lógicos */
+        case TK_LOGICAL_AND: return "TK_LOGICAL_AND"; // &&
+        case TK_LOGICAL_OR:  return "TK_LOGICAL_OR";  // ||
+        case TK_LOGICAL_NOT: return "TK_LOGICAL_NOT"; // !
+
+        /* Operadores Aritméticos */
+        case TK_PLUS:        return "TK_PLUS";        // +
+        case TK_MINUS:       return "TK_MINUS";       // -
+        case TK_MULT:        return "TK_MULT";        // *
+        case TK_DIV:         return "TK_DIV";         // /
+        case TK_MOD:         return "TK_MOD";         // %
+
+        /* Operador de Atribuição */
+        case TK_ASSIGN:      return "TK_ASSIGN";      // =
+
+        /* Símbolos de Pontuação */
+        case TK_SEMICOLON:   return "TK_SEMICOLON";   // ;
+        case TK_COMMA:       return "TK_COMMA";       // ,
+        case TK_LPAREN:      return "TK_LPAREN";      // (
+        case TK_RPAREN:      return "TK_RPAREN";      // )
+        case TK_LBRACE:      return "TK_LBRACE";      // {
+        case TK_RBRACE:      return "TK_RBRACE";      // }
+
+        /* Literais e Identificadores */
+        case TK_INTEGER:     return "TK_INTEGER";
+        case TK_ID:          return "TK_ID";
+
+        /* Caso Padrão (Erro ou Token Desconhecido) */
+        default:             return "UNKNOWN_TOKEN";
     }
 }
 
