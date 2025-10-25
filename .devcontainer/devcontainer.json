@@ -1,5 +1,8 @@
 {
   "name": "Compiladores",
   "image": "mcr.microsoft.com/devcontainers/cpp:ubuntu-22.04",
-  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y flex gcc bison"
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y flex gcc bison",
+  "features": {
+        "ghcr.io/devcontainers/features/graphviz:1": {}
+    }
 }

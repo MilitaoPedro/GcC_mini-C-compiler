@@ -15,10 +15,16 @@ YACC_GEN_C = src/parser.tab.c
 # Header gerado pelo Bison (com a flag -d)
 YACC_GEN_H = src/parser.tab.h
 
-# Objetos compilados (não precisamos, mas é boa prática)
-# OBJS = $(LEX_GEN_C:.c=.o) $(YACC_GEN_C:.c=.o)
+# Arquivo .dot gerado pelo Bison (com a flag --graph)
+YACC_GEN_DOT = src/automato.dot
 
-all: $(TARGET)
+# Imagem SVG final gerada pelo Graphviz
+SVG_TARGET = src/automato.svg
+
+
+# 'all' é o target padrão (o que 'make' executa)
+# Agora ele constrói o compilador E a imagem do autômato
+all: $(TARGET) $(SVG_TARGET)
 
 # Regra para criar o executável final
 $(TARGET): $(LEX_GEN_C) $(YACC_GEN_C)
@@ -28,9 +34,11 @@ $(TARGET): $(LEX_GEN_C) $(YACC_GEN_C)
 
 # Regra para gerar o parser (Bison)
 # O parser DEVE ser gerado primeiro, pois ele cria o .h
-$(YACC_GEN_C) $(YACC_GEN_H): $(YACC_SRC)
-	@echo "Gerando o parser com Bison..."
-	bison -d -o $(YACC_GEN_C) $(YACC_SRC)
+# Adicionamos $(YACC_GEN_DOT) como um "target" oficial desta regra
+$(YACC_GEN_C) $(YACC_GEN_H) $(YACC_GEN_DOT): $(YACC_SRC)
+	@echo "Gerando o parser com Bison (e o automato.dot)..."
+	# -v gera o .output, --graph gera o .dot
+	bison -d -v --graph=$(YACC_GEN_DOT) -o $(YACC_GEN_C) $(YACC_SRC)
 
 # Regra para gerar o scanner (Flex)
 # Note que ele DEPENDE do header gerado pelo Bison
@@ -38,7 +46,15 @@ $(LEX_GEN_C): $(LEX_SRC) $(YACC_GEN_H)
 	@echo "Gerando o scanner com Flex..."
 	flex -o $(LEX_GEN_C) $(LEX_SRC)
 
+# --- NOVA REGRA ---
+# Regra para gerar o .svg a partir do .dot
+# Esta regra DEPENDE do .dot gerado pelo Bison
+$(SVG_TARGET): $(YACC_GEN_DOT)
+	@echo "Gerando a imagem do automato ($(SVG_TARGET)) com Graphviz..."
+	dot -Tsvg $(YACC_GEN_DOT) -o $(SVG_TARGET)
+
 # Regra para limpar os arquivos gerados
+# Adicionamos os novos arquivos .dot e .svg
 clean:
 	@echo "Limpando arquivos gerados..."
-	rm -f $(TARGET) $(LEX_GEN_C) $(YACC_GEN_C) $(YACC_GEN_H)
+	rm -f $(TARGET) $(LEX_GEN_C) $(YACC_GEN_C) $(YACC_GEN_H) $(YACC_GEN_DOT) $(SVG_TARGET) src/parser.output
