@@ -23,18 +23,19 @@ jobs:
       - name: Checkout do Repositório
         uses: actions/checkout@v4
 
-      # 2. Instala as dependências (FLEX, BISON e bibliotecas)
-      - name: Instalar Dependências (flex, bison, libfl-dev)
+      # 2. Instala as dependências (FLEX, BISON, libfl e Graphviz)
+      - name: Instalar Dependências (flex, bison, libfl-dev, graphviz)
         run: |
           sudo apt-get update
-          # Instala o flex, o bison, e a biblioteca de desenvolvimento do flex (-lfl)
-          sudo apt-get install -y flex bison libfl-dev
+          # Instala o flex, o bison, a biblioteca de desenvolvimento do flex (-lfl)
+          # E o graphviz (que provê o comando 'dot' para gerar o SVG)
+          sudo apt-get install -y flex bison libfl-dev graphviz
 
       # 3. Compila o projeto usando o Makefile
       - name: Compilar o Projeto
         run: make
         # O 'make' por padrão executa a regra 'all' do seu Makefile,
-        # que agora roda o bison, depois o flex, e depois o gcc.
+        # que agora roda o bison, depois o flex, o gcc E o dot.
 
       # 4. (Opcional, mas recomendado) Fazer um "Teste de Fumaça"
       #    Isso garante que o executável foi criado e não falha imediatamente.
