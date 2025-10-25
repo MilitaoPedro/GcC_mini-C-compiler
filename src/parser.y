@@ -253,5 +253,5 @@ int main(int argc, char *argv[]) {
     
     fclose(yyin);
     
-    return 1;
+    return 0;
 }
