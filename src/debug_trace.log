@@ -1,0 +1,208 @@
+Starting parse
+Entering state 0
+Stack now 0
+Reading a token
+Next token is token TK_INT ()
+Shifting token TK_INT ()
+Entering state 1
+Stack now 0 1
+Reducing stack by rule 12 (line 91):
+   $1 = token TK_INT ()
+-> $$ = nterm type ()
+Entering state 12
+Stack now 0 12
+Reading a token
+Next token is token TK_ID ()
+Shifting token TK_ID ()
+Entering state 25
+Stack now 0 12 25
+Reducing stack by rule 14 (line 95):
+   $1 = token TK_ID ()
+-> $$ = nterm id_list ()
+Entering state 26
+Stack now 0 12 26
+Reading a token
+Next token is token TK_SEMICOLON ()
+Shifting token TK_SEMICOLON ()
+Entering state 39
+Stack now 0 12 26 39
+Reducing stack by rule 11 (line 88):
+   $1 = nterm type ()
+   $2 = nterm id_list ()
+   $3 = token TK_SEMICOLON ()
+-> $$ = nterm declaration ()
+Entering state 11
+Stack now 0 11
+Reducing stack by rule 5 (line 80):
+   $1 = nterm declaration ()
+-> $$ = nterm statement ()
+Entering state 10
+Stack now 0 10
+Reading a token
+Next token is token TK_ID ()
+Shifting token TK_ID ()
+Entering state 7
+Stack now 0 10 7
+Reading a token
+Next token is token TK_ASSIGN ()
+Shifting token TK_ASSIGN ()
+Entering state 22
+Stack now 0 10 7 22
+Reading a token
+Next token is token TK_INTEGER ()
+Shifting token TK_INTEGER ()
+Entering state 30
+Stack now 0 10 7 22 30
+Reducing stack by rule 25 (line 122):
+   $1 = token TK_INTEGER ()
+-> $$ = nterm expression ()
+Entering state 38
+Stack now 0 10 7 22 38
+Reading a token
+Next token is token TK_SEMICOLON ()
+Shifting token TK_SEMICOLON ()
+Entering state 61
+Stack now 0 10 7 22 38 61
+Reducing stack by rule 16 (line 99):
+   $1 = token TK_ID ()
+   $2 = token TK_ASSIGN ()
+   $3 = nterm expression ()
+   $4 = token TK_SEMICOLON ()
+-> $$ = nterm assignment ()
+Entering state 13
+Stack now 0 10 13
+Reducing stack by rule 6 (line 81):
+   $1 = nterm assignment ()
+-> $$ = nterm statement ()
+Entering state 10
+Stack now 0 10 10
+Reading a token
+Next token is token TK_IF ()
+Shifting token TK_IF ()
+Entering state 3
+Stack now 0 10 10 3
+Reading a token
+Next token is token TK_LPAREN ()
+Shifting token TK_LPAREN ()
+Entering state 18
+Stack now 0 10 10 3 18
+Reading a token
+Next token is token TK_ID ()
+Shifting token TK_ID ()
+Entering state 31
+Stack now 0 10 10 3 18 31
+Reducing stack by rule 28 (line 125):
+   $1 = token TK_ID ()
+-> $$ = nterm expression ()
+Entering state 34
+Stack now 0 10 10 3 18 34
+Reading a token
+Next token is token TK_RPAREN ()
+Shifting token TK_RPAREN ()
+Entering state 44
+Stack now 0 10 10 3 18 34 44
+Reading a token
+Next token is token TK_PRINT ()
+Shifting token TK_PRINT ()
+Entering state 5
+Stack now 0 10 10 3 18 34 44 5
+Reading a token
+Next token is token TK_LPAREN ()
+Shifting token TK_LPAREN ()
+Entering state 20
+Stack now 0 10 10 3 18 34 44 5 20
+Reading a token
+Next token is token TK_ID ()
+Shifting token TK_ID ()
+Entering state 31
+Stack now 0 10 10 3 18 34 44 5 20 31
+Reducing stack by rule 28 (line 125):
+   $1 = token TK_ID ()
+-> $$ = nterm expression ()
+Entering state 36
+Stack now 0 10 10 3 18 34 44 5 20 36
+Reading a token
+Next token is token TK_RPAREN ()
+Shifting token TK_RPAREN ()
+Entering state 59
+Stack now 0 10 10 3 18 34 44 5 20 36 59
+Reading a token
+Next token is token TK_SEMICOLON ()
+Shifting token TK_SEMICOLON ()
+Entering state 82
+Stack now 0 10 10 3 18 34 44 5 20 36 59 82
+Reducing stack by rule 18 (line 105):
+   $1 = token TK_PRINT ()
+   $2 = token TK_LPAREN ()
+   $3 = nterm expression ()
+   $4 = token TK_RPAREN ()
+   $5 = token TK_SEMICOLON ()
+-> $$ = nterm print ()
+Entering state 15
+Stack now 0 10 10 3 18 34 44 15
+Reducing stack by rule 8 (line 83):
+   $1 = nterm print ()
+-> $$ = nterm statement ()
+Entering state 66
+Stack now 0 10 10 3 18 34 44 66
+Reducing stack by rule 23 (line 118):
+   $1 = nterm statement ()
+-> $$ = nterm then ()
+Entering state 67
+Stack now 0 10 10 3 18 34 44 67
+Reading a token
+Now at end of input.
+Reducing stack by rule 22 (line 115):
+-> $$ = nterm else ()
+Entering state 86
+Stack now 0 10 10 3 18 34 44 67 86
+Reducing stack by rule 20 (line 111):
+   $1 = token TK_IF ()
+   $2 = token TK_LPAREN ()
+   $3 = nterm expression ()
+   $4 = token TK_RPAREN ()
+   $5 = nterm then ()
+   $6 = nterm else ()
+-> $$ = nterm if ()
+Entering state 17
+Stack now 0 10 10 17
+Reducing stack by rule 10 (line 85):
+   $1 = nterm if ()
+-> $$ = nterm statement ()
+Entering state 10
+Stack now 0 10 10 10
+Now at end of input.
+Reducing stack by rule 3 (line 76):
+-> $$ = nterm statements ()
+Entering state 24
+Stack now 0 10 10 10 24
+Reducing stack by rule 4 (line 77):
+   $1 = nterm statement ()
+   $2 = nterm statements ()
+-> $$ = nterm statements ()
+Entering state 24
+Stack now 0 10 10 24
+Reducing stack by rule 4 (line 77):
+   $1 = nterm statement ()
+   $2 = nterm statements ()
+-> $$ = nterm statements ()
+Entering state 24
+Stack now 0 10 24
+Reducing stack by rule 4 (line 77):
+   $1 = nterm statement ()
+   $2 = nterm statements ()
+-> $$ = nterm statements ()
+Entering state 9
+Stack now 0 9
+Reducing stack by rule 1 (line 70):
+   $1 = nterm statements ()
+-> $$ = nterm program ()
+Entering state 8
+Stack now 0 8
+Now at end of input.
+Shifting token "end of file" ()
+Entering state 23
+Stack now 0 8 23
+Stack now 0 8 23
+Cleanup: popping token "end of file" ()
+Cleanup: popping nterm program ()

@@ -1,44 +1,43 @@
 CC = gcc
-CFLAGS = -Wall -g # -g adiciona símbolos de debug, -Wall mostra todos os warnings
+CFLAGS = -Wall -g
 
-# Nome do executável final
 TARGET = src/compilador
 
-# Nossos arquivos-fonte .l e .y
 LEX_SRC = src/scanner.l
 YACC_SRC = src/parser.y
+TRACE_SRC = src/trace_printer.c # <<< ARQUIVO FONTE
 
-# Arquivos C gerados pelo Flex e Bison
 LEX_GEN_C = src/lex.yy.c
 YACC_GEN_C = src/parser.tab.c
+TRACE_OBJ = $(TRACE_SRC:.c=.o)   # <<< ARQUIVO OBJETO
 
-# Header gerado pelo Bison (com a flag -d)
 YACC_GEN_H = src/parser.tab.h
-
-# Objetos compilados (não precisamos, mas é boa prática)
-# OBJS = $(LEX_GEN_C:.c=.o) $(YACC_GEN_C:.c=.o)
+TRACE_HDR = src/trace_printer.h # <<< HEADER
 
 all: $(TARGET)
 
-# Regra para criar o executável final
-$(TARGET): $(LEX_GEN_C) $(YACC_GEN_C)
+# Linkagem final - inclui o novo objeto .o
+$(TARGET): $(LEX_GEN_C) $(YACC_GEN_C) $(TRACE_OBJ)
 	@echo "Linkando o executável final..."
-	$(CC) $(CFLAGS) $(LEX_GEN_C) $(YACC_GEN_C) -o $(TARGET) -lfl
+	$(CC) $(CFLAGS) $(LEX_GEN_C) $(YACC_GEN_C) $(TRACE_OBJ) -o $(TARGET) -lfl
 	@echo "Compilador '$(TARGET)' criado com sucesso!"
 
-# Regra para gerar o parser (Bison)
-# O parser DEVE ser gerado primeiro, pois ele cria o .h
-$(YACC_GEN_C) $(YACC_GEN_H): $(YACC_SRC)
+# Compila trace_printer.c para trace_printer.o
+$(TRACE_OBJ): $(TRACE_SRC) $(TRACE_HDR) src/tokens.h
+	@echo "Compilando módulo de impressão do trace..."
+	$(CC) $(CFLAGS) -c $(TRACE_SRC) -o $(TRACE_OBJ)
+
+# Regra do Bison
+$(YACC_GEN_C) $(YACC_GEN_H): $(YACC_SRC) src/tokens.h
 	@echo "Gerando o parser com Bison..."
 	bison -d -o $(YACC_GEN_C) $(YACC_SRC)
 
-# Regra para gerar o scanner (Flex)
-# Note que ele DEPENDE do header gerado pelo Bison
-$(LEX_GEN_C): $(LEX_SRC) $(YACC_GEN_H)
+# Regra do Flex
+$(LEX_GEN_C): $(LEX_SRC) $(YACC_GEN_H) src/tokens.h
 	@echo "Gerando o scanner com Flex..."
 	flex -o $(LEX_GEN_C) $(LEX_SRC)
 
-# Regra para limpar os arquivos gerados
+# Limpeza
 clean:
 	@echo "Limpando arquivos gerados..."
-	rm -f $(TARGET) $(LEX_GEN_C) $(YACC_GEN_C) $(YACC_GEN_H)
+	rm -f $(TARGET) $(LEX_GEN_C) $(YACC_GEN_C) $(YACC_GEN_H) $(TRACE_OBJ) src/debug_trace.log
