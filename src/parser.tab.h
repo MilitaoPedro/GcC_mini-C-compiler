@@ -73,7 +73,22 @@ extern int yydebug;
     TK_LBRACE = 274,               /* TK_LBRACE  */
     TK_RBRACE = 275,               /* TK_RBRACE  */
     TK_INTEGER = 276,              /* TK_INTEGER  */
-    TK_ID = 277                    /* TK_ID  */
+    TK_ID = 277,                   /* TK_ID  */
+    TK_EQ = 278,                   /* TK_EQ  */
+    TK_NE = 279,                   /* TK_NE  */
+    TK_LE = 280,                   /* TK_LE  */
+    TK_GE = 281,                   /* TK_GE  */
+    TK_LT = 282,                   /* TK_LT  */
+    TK_GT = 283,                   /* TK_GT  */
+    TK_LOGICAL_AND = 284,          /* TK_LOGICAL_AND  */
+    TK_LOGICAL_OR = 285,           /* TK_LOGICAL_OR  */
+    TK_LOGICAL_NOT = 286,          /* TK_LOGICAL_NOT  */
+    TK_PLUS = 287,                 /* TK_PLUS  */
+    TK_MINUS = 288,                /* TK_MINUS  */
+    TK_MULT = 289,                 /* TK_MULT  */
+    TK_DIV = 290,                  /* TK_DIV  */
+    TK_MOD = 291,                  /* TK_MOD  */
+    TK_ASSIGN = 292                /* TK_ASSIGN  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif

@@ -42,6 +42,10 @@ char g_full_trace[65536] = "AÇÃO\tDETALHE\n";
 %token TK_READ TK_TRUE TK_FALSE TK_RELOP TK_LOP TK_ARITHOP
 %token TK_SEMICOLON TK_COMMA TK_LPAREN TK_RPAREN TK_LBRACE TK_RBRACE
 %token TK_INTEGER TK_ID
+%token TK_EQ TK_NE TK_LE TK_GE TK_LT TK_GT
+%token TK_LOGICAL_AND TK_LOGICAL_OR TK_LOGICAL_NOT
+%token TK_PLUS TK_MINUS TK_MULT TK_DIV TK_MOD
+%token TK_ASSIGN
 
 %debug
 
@@ -50,29 +54,52 @@ char g_full_trace[65536] = "AÇÃO\tDETALHE\n";
 /* ========================== Seção de Regras (Gramática) ========================== */
 %%
 
-program:        statements;                     
+program:
+                        statements                                                  {add_reduce_trace("program -> statements");}
+                        ;
 
+block:                  TK_LBRACE statements TK_RBRACE                              {add_reduce_trace("block -> TK_LBRACE statements TK_RBRACE");}
+                        ;
 
-statements:                                     {add_reduce_trace(GREEN "statements ->"RESET);}
-                | statements statement          {add_reduce_trace(GREEN "statements -> statements statemen"RESET);}
-                ;
+statements:                                                                         {add_reduce_trace("statements ->");}
+                        | statement statements                                      {add_reduce_trace("statements -> statement statements");}
+                        ;
 
-statement:      declaration                     {add_reduce_trace(GREEN "statement -> declaration"RESET);}
-                ;
+statement:              declaration                                                 {add_reduce_trace("statement -> declaration");}
+                        | assignment_statement                                      {add_reduce_trace("statement -> assignment_statement");}
+                        | read_statement                                            {add_reduce_trace("statement -> read_statement");}
+                        | print_statement                                           {add_reduce_trace("statement -> print_statement");}
+                        | while_statement                                           {add_reduce_trace("statement -> while_statement");}
+                        ;
 
-block:          TK_LBRACE statements TK_RBRACE  {add_reduce_trace(GREEN "block -> TK_LBRACE statements TK_RBRACE"RESET);}
-                ;
+declaration:            type id_list TK_SEMICOLON                                   {add_reduce_trace("declaration -> type id_list TK_SEMICOLON");}
+                        ;
 
-declaration:    type id_list TK_SEMICOLON       {add_reduce_trace(GREEN "declaration -> type id_list TK_SEMICOLON"RESET);}
-                ;
+type:                   TK_INT                                                      {add_reduce_trace("type -> TK_INT");}
+                        | TK_BOOL                                                   {add_reduce_trace("type -> TK_BOOL");}
+                        ;
 
-type:           TK_INT                          {add_reduce_trace(GREEN "type -> TK_INT"RESET);}
-                | TK_BOOL                       {add_reduce_trace(GREEN "type -> TK_BOOL"RESET);}
-                ;
+id_list:                TK_ID                                                       {add_reduce_trace("id_list -> TK_ID");}
+                        | id_list TK_COMMA TK_ID                                    {add_reduce_trace("id_list -> id_list TK_COMMA TK_ID");}
+                        ;
 
-id_list:        TK_ID                           {add_reduce_trace(GREEN "id_list -> TK_ID"RESET);}
-                | id_list TK_COMMA TK_ID        {add_reduce_trace(GREEN "id_list -> id_list TK_COMMA TK_ID"RESET);}
-                ;
+assignment_statement:   TK_ID TK_ASSIGN expression TK_SEMICOLON                     {add_reduce_trace("assignment_statement -> TK_ID TK_ASSIGN expression TK_SEMICOLON");}
+                        ;
+
+read_statement:         TK_READ TK_LPAREN TK_ID TK_RPAREN TK_SEMICOLON              {add_reduce_trace("read_statement -> TK_READ TK_LPAREN TK_ID TK_RPAREN TK_SEMICOLON");}
+                        ;
+
+print_statement:        TK_PRINT TK_LPAREN expression TK_RPAREN TK_SEMICOLON        {add_reduce_trace("print_statement -> TK_PRINT TK_LPAREN expression TK_RPAREN TK_SEMICOLON");}
+                        ;
+
+while_statement:        TK_WHILE TK_LPAREN expression TK_RPAREN block               {add_reduce_trace("while_statement -> TK_WHILE TK_LPAREN expression TK_RPAREN block");}
+                        ;
+
+expression:             TK_ID                                                       {add_reduce_trace("expression -> TK_ID");}
+                        | TK_INTEGER                                                {add_reduce_trace("expression -> TK_INTEGER");}
+                        | TK_TRUE                                                   {add_reduce_trace("expression -> TK_TRUE");}
+                        | TK_FALSE                                                  {add_reduce_trace("expression -> TK_FALSE");}
+                        ;
 
 %%
 /* ========================= Seção de Código C ========================= */
@@ -159,14 +186,10 @@ int main(int argc, char *argv[]) {
                  printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD RED "%-9s" RESET " ║ " BOLD RED "%-80s" RESET " ║\n", 
                         position, action, detail);
              } else {
-                if(strcmp(action, "REDUCE") == 0){
-                 // Imprime REDUCE (formato normal)
-                    printf("║ " BOLD YELLOW "%-9s" RESET " ║ " CYAN "%-9s" RESET " ║ " GREEN "%-89s" RESET " ║\n", 
-                        position, action, detail);
-                } else{
+                
                     printf("║ " BOLD YELLOW "%-9s" RESET " ║ " CYAN "%-9s" RESET " ║ " GREEN "%-80s" RESET " ║\n", 
                         position, action, detail);
-                }
+                
              }
         }
         line = strtok(NULL, "\n");

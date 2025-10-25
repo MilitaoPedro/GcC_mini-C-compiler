@@ -70,23 +70,24 @@ NEWLINE     \n
 "true"          { print_token(TK_TRUE, yytext); column_num += yyleng; return TK_TRUE; }
 "false"         { print_token(TK_FALSE, yytext); column_num += yyleng; return TK_FALSE; }
 
-"=="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
-"!="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
-"<="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
-">="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
-"<"             { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
-">"             { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
+"=="            { print_token(TK_EQ, yytext); column_num += yyleng; return TK_EQ; }
+"!="            { print_token(TK_NE, yytext); column_num += yyleng; return TK_NE; }
+"<="            { print_token(TK_LE, yytext); column_num += yyleng; return TK_LE; }
+">="            { print_token(TK_GE, yytext); column_num += yyleng; return TK_GE; }
+"<"             { print_token(TK_LT, yytext); column_num += yyleng; return TK_LT; }
+">"             { print_token(TK_GT, yytext); column_num += yyleng; return TK_GT; }
 
-"&&"            { print_token(TK_LOP, yytext); column_num += yyleng; return TK_LOP; }
-"||"            { print_token(TK_LOP, yytext); column_num += yyleng; return TK_LOP; }
-"!"             { print_token(TK_LOP, yytext); column_num += yyleng; return TK_LOP; }
+"&&"            { print_token(TK_LOGICAL_AND, yytext); column_num += yyleng; return TK_LOGICAL_AND; }
+"||"            { print_token(TK_LOGICAL_OR, yytext); column_num += yyleng; return TK_LOGICAL_OR; }
+"!"             { print_token(TK_LOGICAL_NOT, yytext); column_num += yyleng; return TK_LOGICAL_NOT; }
 
-"+"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
-"-"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
-"*"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
-"/"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
-"%"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
-"="             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
+"+"             { print_token(TK_PLUS, yytext); column_num += yyleng; return TK_PLUS; }
+"-"             { print_token(TK_MINUS, yytext); column_num += yyleng; return TK_MINUS; }
+"*"             { print_token(TK_MULT, yytext); column_num += yyleng; return TK_MULT; }
+"/"             { print_token(TK_DIV, yytext); column_num += yyleng; return TK_DIV; }
+"%"             { print_token(TK_MOD, yytext); column_num += yyleng; return TK_MOD; }
+
+"="             { print_token(TK_ASSIGN, yytext); column_num += yyleng; return TK_ASSIGN; }
 
 ";"             { print_token(TK_SEMICOLON, yytext); column_num += yyleng; return TK_SEMICOLON; }
 ","             { print_token(TK_COMMA, yytext); column_num += yyleng; return TK_COMMA; }
