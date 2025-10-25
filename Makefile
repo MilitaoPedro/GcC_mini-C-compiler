@@ -8,22 +8,25 @@ TARGET = src/compilador
 LEX_SRC = src/scanner.l
 YACC_SRC = src/parser.y
 
-# Arquivos C gerados pelo Flex e Bison
+# --- Arquivos Gerados ---
 LEX_GEN_C = src/lex.yy.c
 YACC_GEN_C = src/parser.tab.c
-
-# Header gerado pelo Bison (com a flag -d)
 YACC_GEN_H = src/parser.tab.h
-
-# Arquivo .dot gerado pelo Bison (com a flag --graph)
 YACC_GEN_DOT = src/automato.dot
+YACC_OUTPUT = src/parser.output # Arquivo de log do Bison
 
-# Imagem SVG final gerada pelo Graphviz
+# --- Target de Imagem Vetorial (SVG) ---
 SVG_TARGET = src/automato.svg
 
+# --- Flags de Otimização do Graphviz ---
+# -G<attr>=<val> : Adiciona um Atributo de Grafo
+# overlap=scale   : Redimensiona o gráfico para evitar sobreposição de nós (ESSENCIAL)
+# ranksep=1.5     : Aumenta a distância vertical entre "camadas" de nós
+# nodesep=0.5     : Aumenta a distância horizontal mínima entre nós
+# splines=true    : Usa linhas curvas (pode ser 'ortho' para linhas retas)
+GRAPHVIZ_FLAGS = -Goverlap=scale -Granksep=1.5 -Gnodesep=0.5 -Gsplines=true
 
-# 'all' é o target padrão (o que 'make' executa)
-# Agora ele constrói o compilador E a imagem do autômato
+# Target padrão: construir o compilador E a imagem
 all: $(TARGET) $(SVG_TARGET)
 
 # Regra para criar o executável final
@@ -33,28 +36,22 @@ $(TARGET): $(LEX_GEN_C) $(YACC_GEN_C)
 	@echo "Compilador '$(TARGET)' criado com sucesso!"
 
 # Regra para gerar o parser (Bison)
-# O parser DEVE ser gerado primeiro, pois ele cria o .h
-# Adicionamos $(YACC_GEN_DOT) como um "target" oficial desta regra
-$(YACC_GEN_C) $(YACC_GEN_H) $(YACC_GEN_DOT): $(YACC_SRC)
+$(YACC_GEN_C) $(YACC_GEN_H) $(YACC_GEN_DOT) $(YACC_OUTPUT): $(YACC_SRC)
 	@echo "Gerando o parser com Bison (e o automato.dot)..."
-	# -v gera o .output, --graph gera o .dot
 	bison -d -v --graph=$(YACC_GEN_DOT) -o $(YACC_GEN_C) $(YACC_SRC)
 
 # Regra para gerar o scanner (Flex)
-# Note que ele DEPENDE do header gerado pelo Bison
 $(LEX_GEN_C): $(LEX_SRC) $(YACC_GEN_H)
 	@echo "Gerando o scanner com Flex..."
 	flex -o $(LEX_GEN_C) $(LEX_SRC)
 
-# --- NOVA REGRA ---
-# Regra para gerar o .svg a partir do .dot
-# Esta regra DEPENDE do .dot gerado pelo Bison
+# Regra para gerar o SVG (com otimizações)
 $(SVG_TARGET): $(YACC_GEN_DOT)
-	@echo "Gerando a imagem do automato ($(SVG_TARGET)) com Graphviz..."
-	dot -Tsvg $(YACC_GEN_DOT) -o $(SVG_TARGET)
+	@echo "Gerando a imagem vetorial do automato ($(SVG_TARGET))..."
+	dot -Tsvg $(GRAPHVIZ_FLAGS) $(YACC_GEN_DOT) -o $(SVG_TARGET)
+	@echo "Imagem '$(SVG_TARGET)' gerada. Abra-a em um navegador para dar zoom."
 
 # Regra para limpar os arquivos gerados
-# Adicionamos os novos arquivos .dot e .svg
 clean:
 	@echo "Limpando arquivos gerados..."
-	rm -f $(TARGET) $(LEX_GEN_C) $(YACC_GEN_C) $(YACC_GEN_H) $(YACC_GEN_DOT) $(SVG_TARGET) src/parser.output
+	rm -f $(TARGET) $(LEX_GEN_C) $(YACC_GEN_C) $(YACC_GEN_H) $(YACC_GEN_DOT) $(SVG_TARGET) $(YACC_OUTPUT)
