@@ -8,6 +8,9 @@
 #include "tokens.h"
 #include "parser.tab.h"
 
+/* Faz o lexer "enxergar" a string global do parser */
+extern char g_full_trace[];
+
 /* Definições de cores ANSI */
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
@@ -25,7 +28,7 @@ int symbol_count = 0;
 
 /* Variáveis para controle de posição */
 int column_num = 1;
-int error_count = 0;
+int lexic_error_count = 0;
 
 /* Protótipos das funções */
 void insert_symbol(char *lexeme, yytoken_kind_t token_type);
@@ -67,23 +70,24 @@ NEWLINE     \n
 "true"          { print_token(TK_TRUE, yytext); column_num += yyleng; return TK_TRUE; }
 "false"         { print_token(TK_FALSE, yytext); column_num += yyleng; return TK_FALSE; }
 
-"=="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
-"!="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
-"<="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
-">="            { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
-"<"             { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
-">"             { print_token(TK_RELOP, yytext); column_num += yyleng; return TK_RELOP; }
+"=="            { print_token(TK_EQ, yytext); column_num += yyleng; return TK_EQ; }
+"!="            { print_token(TK_NE, yytext); column_num += yyleng; return TK_NE; }
+"<="            { print_token(TK_LE, yytext); column_num += yyleng; return TK_LE; }
+">="            { print_token(TK_GE, yytext); column_num += yyleng; return TK_GE; }
+"<"             { print_token(TK_LT, yytext); column_num += yyleng; return TK_LT; }
+">"             { print_token(TK_GT, yytext); column_num += yyleng; return TK_GT; }
 
-"&&"            { print_token(TK_LOP, yytext); column_num += yyleng; return TK_LOP; }
-"||"            { print_token(TK_LOP, yytext); column_num += yyleng; return TK_LOP; }
-"!"             { print_token(TK_LOP, yytext); column_num += yyleng; return TK_LOP; }
+"&&"            { print_token(TK_LOGICAL_AND, yytext); column_num += yyleng; return TK_LOGICAL_AND; }
+"||"            { print_token(TK_LOGICAL_OR, yytext); column_num += yyleng; return TK_LOGICAL_OR; }
+"!"             { print_token(TK_LOGICAL_NOT, yytext); column_num += yyleng; return TK_LOGICAL_NOT; }
 
-"+"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
-"-"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
-"*"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
-"/"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
-"%"             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
-"="             { print_token(TK_ARITHOP, yytext); column_num += yyleng; return TK_ARITHOP; }
+"+"             { print_token(TK_PLUS, yytext); column_num += yyleng; return TK_PLUS; }
+"-"             { print_token(TK_MINUS, yytext); column_num += yyleng; return TK_MINUS; }
+"*"             { print_token(TK_MULT, yytext); column_num += yyleng; return TK_MULT; }
+"/"             { print_token(TK_DIV, yytext); column_num += yyleng; return TK_DIV; }
+"%"             { print_token(TK_MOD, yytext); column_num += yyleng; return TK_MOD; }
+
+"="             { print_token(TK_ASSIGN, yytext); column_num += yyleng; return TK_ASSIGN; }
 
 ";"             { print_token(TK_SEMICOLON, yytext); column_num += yyleng; return TK_SEMICOLON; }
 ","             { print_token(TK_COMMA, yytext); column_num += yyleng; return TK_COMMA; }
@@ -172,13 +176,28 @@ const char* token_type_to_string(yytoken_kind_t type) {
 }
 
 /* Imprimir token com posição */
+/* Imprimir token com posição */
 void print_token(yytoken_kind_t token_type, char *lexeme) {
+    /* 1. IMPRIME A TABELA LÉXICA (COMO ANTES) */
     printf("║ " YELLOW "[%03d:%03d]" RESET " ║ " CYAN "%-20s" RESET " ║ " GREEN "%-69s" RESET " ║\n",
         yylineno,
         column_num,
         token_type_to_string(token_type),
         lexeme
-        );
+    );
+    
+    /* 2. REGISTRA A AÇÃO "SHIFT" NA ANÁLISE LÉXICA GLOBAL (COM POSIÇÃO) */
+    char temp_str[256];
+    char token_name_str[50];
+    
+    strcpy(token_name_str, token_type_to_string(token_type)); 
+    
+    sprintf(temp_str, "[%03d:%03d]\tSHIFT\t%s (%s)\n", 
+            yylineno, 
+            column_num, 
+            token_name_str, 
+            lexeme);
+    strcat(g_full_trace, temp_str);
 }
 
 /* Reportar erro */
@@ -189,7 +208,7 @@ void report_error(char *message) {
             column_num,
             "ERRO LÉXICO",  // O "tipo de token" do erro
             message);  // A descrição do erro
-    error_count++;
+    lexic_error_count++;
 }
 
 int compare_symbols(const void *a, const void *b) {
