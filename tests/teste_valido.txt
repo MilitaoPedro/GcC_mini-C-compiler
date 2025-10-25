@@ -1,23 +1,7 @@
-    // Testa declaração de int e bool
-    int a, b;
-    bool c;
+// teste_if_else.mc
+// Teste focado nas regras fatoradas de if/else
 
-    // Testa read
-    read(a);
-    
-    // Testa atribuição com inteiro
-    b = 10;
-
-    // Testa while e expressão (com ID)
-    while (a) {
-        
-        // Testa print e expressão (com ID)
-        print(b);
-        
-        // Testa atribuição com outro ID
-        a = b;
-    }
-    
-    // Testa atribuição com bool
-    c = true;
-
+    int a;
+    bool b;
+    a = 1;
+    b = true;

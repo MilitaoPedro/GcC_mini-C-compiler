@@ -55,50 +55,62 @@ char g_full_trace[65536] = "AÇÃO\tDETALHE\n";
 %%
 
 program:
-                        statements                                                  {add_reduce_trace("program -> statements");}
+                        statements                                                              {add_reduce_trace("program -> statements");}
                         ;
 
-block:                  TK_LBRACE statements TK_RBRACE                              {add_reduce_trace("block -> TK_LBRACE statements TK_RBRACE");}
+block:                  TK_LBRACE statements TK_RBRACE                                          {add_reduce_trace("block -> TK_LBRACE statements TK_RBRACE");}
                         ;
 
-statements:                                                                         {add_reduce_trace("statements ->");}
-                        | statement statements                                      {add_reduce_trace("statements -> statement statements");}
+statements:                                                                                     {add_reduce_trace("statements ->");}
+                        | statement statements                                                  {add_reduce_trace("statements -> statement statements");}
                         ;
 
-statement:              declaration                                                 {add_reduce_trace("statement -> declaration");}
-                        | assignment_statement                                      {add_reduce_trace("statement -> assignment_statement");}
-                        | read_statement                                            {add_reduce_trace("statement -> read_statement");}
-                        | print_statement                                           {add_reduce_trace("statement -> print_statement");}
-                        | while_statement                                           {add_reduce_trace("statement -> while_statement");}
+statement:              declaration                                                             {add_reduce_trace("statement -> declaration");}
+                        | assignment                                                            {add_reduce_trace("statement -> assignment");}
+                        | read                                                                  {add_reduce_trace("statement -> read");}
+                        | print                                                                 {add_reduce_trace("statement -> print");}
+                        | while                                                                 {add_reduce_trace("statement -> while");}
+                        | if                                                                    {add_reduce_trace("statement -> if");}
                         ;
 
-declaration:            type id_list TK_SEMICOLON                                   {add_reduce_trace("declaration -> type id_list TK_SEMICOLON");}
+declaration:            type id_list TK_SEMICOLON                                               {add_reduce_trace("declaration -> type id_list TK_SEMICOLON");}
                         ;
 
-type:                   TK_INT                                                      {add_reduce_trace("type -> TK_INT");}
-                        | TK_BOOL                                                   {add_reduce_trace("type -> TK_BOOL");}
+type:                   TK_INT                                                                  {add_reduce_trace("type -> TK_INT");}
+                        | TK_BOOL                                                               {add_reduce_trace("type -> TK_BOOL");}
                         ;
 
-id_list:                TK_ID                                                       {add_reduce_trace("id_list -> TK_ID");}
-                        | id_list TK_COMMA TK_ID                                    {add_reduce_trace("id_list -> id_list TK_COMMA TK_ID");}
+id_list:                TK_ID                                                                   {add_reduce_trace("id_list -> TK_ID");}
+                        | id_list TK_COMMA TK_ID                                                {add_reduce_trace("id_list -> id_list TK_COMMA TK_ID");}
                         ;
 
-assignment_statement:   TK_ID TK_ASSIGN expression TK_SEMICOLON                     {add_reduce_trace("assignment_statement -> TK_ID TK_ASSIGN expression TK_SEMICOLON");}
+assignment:             TK_ID TK_ASSIGN expression TK_SEMICOLON                                 {add_reduce_trace("assignment -> TK_ID TK_ASSIGN expression TK_SEMICOLON");}
                         ;
 
-read_statement:         TK_READ TK_LPAREN TK_ID TK_RPAREN TK_SEMICOLON              {add_reduce_trace("read_statement -> TK_READ TK_LPAREN TK_ID TK_RPAREN TK_SEMICOLON");}
+read:                   TK_READ TK_LPAREN TK_ID TK_RPAREN TK_SEMICOLON                          {add_reduce_trace("read -> TK_READ TK_LPAREN TK_ID TK_RPAREN TK_SEMICOLON");}
                         ;
 
-print_statement:        TK_PRINT TK_LPAREN expression TK_RPAREN TK_SEMICOLON        {add_reduce_trace("print_statement -> TK_PRINT TK_LPAREN expression TK_RPAREN TK_SEMICOLON");}
+print:                  TK_PRINT TK_LPAREN expression TK_RPAREN TK_SEMICOLON                    {add_reduce_trace("print -> TK_PRINT TK_LPAREN expression TK_RPAREN TK_SEMICOLON");}
                         ;
 
-while_statement:        TK_WHILE TK_LPAREN expression TK_RPAREN block               {add_reduce_trace("while_statement -> TK_WHILE TK_LPAREN expression TK_RPAREN block");}
+while:                  TK_WHILE TK_LPAREN expression TK_RPAREN then                            {add_reduce_trace("while -> TK_WHILE TK_LPAREN expression TK_RPAREN then");}
                         ;
 
-expression:             TK_ID                                                       {add_reduce_trace("expression -> TK_ID");}
-                        | TK_INTEGER                                                {add_reduce_trace("expression -> TK_INTEGER");}
-                        | TK_TRUE                                                   {add_reduce_trace("expression -> TK_TRUE");}
-                        | TK_FALSE                                                  {add_reduce_trace("expression -> TK_FALSE");}
+if:                     TK_IF TK_LPAREN expression TK_RPAREN then else                          {add_reduce_trace("if -> TK_IF TK_LPAREN expression TK_RPAREN then else");}
+                        ;
+
+else:                   TK_ELSE then                                                            {add_reduce_trace("else -> TK_ELSE then");}
+                        |                                                                       {add_reduce_trace("else ->");}
+                        ;
+
+then:                   statement                                                               {add_reduce_trace("then -> statement");}
+                        |block                                                                  {add_reduce_trace("then -> block");}
+                        ;
+
+expression:             TK_ID                                                                   {add_reduce_trace("expression -> TK_ID");}
+                        | TK_INTEGER                                                            {add_reduce_trace("expression -> TK_INTEGER");}
+                        | TK_TRUE                                                               {add_reduce_trace("expression -> TK_TRUE");}
+                        | TK_FALSE                                                              {add_reduce_trace("expression -> TK_FALSE");}
                         ;
 
 %%
