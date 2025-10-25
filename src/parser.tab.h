@@ -88,7 +88,8 @@ extern int yydebug;
     TK_MULT = 289,                 /* TK_MULT  */
     TK_DIV = 290,                  /* TK_DIV  */
     TK_MOD = 291,                  /* TK_MOD  */
-    TK_ASSIGN = 292                /* TK_ASSIGN  */
+    TK_ASSIGN = 292,               /* TK_ASSIGN  */
+    UMINUS = 293                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
