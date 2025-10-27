@@ -1,38 +1,18 @@
-// teste_compacto.mc
-// Testa todas as regras implementadas de forma concisa.
+// Testa as regras essenciais de forma mínima.
 
+int x;
+bool y;
 
-    int counter, limit;
-    bool active;
+read(x);       // Testa read
+y = true;      // Testa assignment bool
 
-    read(limit);    // Testa read
-    counter = 0;    // Testa assignment
-    active = true;  // Testa assignment com bool
+if (x) {       // Testa if (block)
+    print(x);  // Testa print
+    while(y)   // Testa while (block) aninhado
+        y = false; // Testa assignment bool, while corpo unico (matched_statement)
+} else         // Testa else
+    x = 0;     // Testa assignment int (matched_statement)
 
-    if (active) { // Testa if com block
-        
-        limit = 10; // Testa assignment dentro do if
-        
-        if (limit) // Testa if aninhado (sem else)
-            print(counter); // Testa print com comando único
+if(true) if(false) x=1; else x=2; // Testa dangling else com statement unico
 
-    } else { // Testa else com block
-        
-        while (counter) { // Testa while com expression ID
-            
-            print(counter); // Testa print dentro do while
-            counter = 0;    // Testa assignment dentro do while
-            
-            // Testa if/else aninhado dentro do else/while
-            if (false) 
-                active = true; 
-            else 
-                active = false; // Este else pertence ao if(false)
-        }
-    }
-    
-    // Testa while com comando único (requer que 'then' possa ser 'statement')
-    while (active) 
-        counter = 1; 
-
- // Fim do programa
+// Fim

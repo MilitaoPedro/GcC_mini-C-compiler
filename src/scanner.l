@@ -5,8 +5,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "tokens.h"
 #include "parser.tab.h"
+
+typedef struct symbol {
+    int id;                         /* Identificador único do token na tabela de símbolos*/
+    char *lexeme;                   /* O texto do token ("int", "main", "x") */
+    yytoken_kind_t token_type;      /* Tipo do token (enum) */
+    int line;                       /* Linha onde aparece */
+    int column;                     /* Coluna onde inicia */
+} Symbol;
 
 /* Faz o lexer "enxergar" a string global do parser */
 extern char g_full_trace[];
@@ -203,7 +210,6 @@ const char* token_type_to_string(yytoken_kind_t type) {
 }
 
 /* Imprimir token com posição */
-/* Imprimir token com posição */
 void print_token(yytoken_kind_t token_type, char *lexeme) {
     /* 1. IMPRIME A TABELA LÉXICA (COMO ANTES) */
     printf("║ " YELLOW "[%03d:%03d]" RESET " ║ " CYAN "%-20s" RESET " ║ " GREEN "%-69s" RESET " ║\n",
@@ -219,7 +225,7 @@ void print_token(yytoken_kind_t token_type, char *lexeme) {
     
     strcpy(token_name_str, token_type_to_string(token_type)); 
     
-    sprintf(temp_str, "[%03d:%03d]\tSHIFT\t%s (%s)\n", 
+    sprintf(temp_str, "[%03d:%03d]\tSHIFT\t%s '%s'\n", 
             yylineno, 
             column_num, 
             token_name_str, 
