@@ -137,11 +137,18 @@ type:                   TK_INT                                                  
                         | TK_BOOL                                                                       { add_reduce_trace("type -> TK_BOOL");}
                         ;
 
-/* Regra para lista de identificadores em declarações (separados por vírgula). */
-id_list:                TK_ID                                                                           { add_reduce_trace("id_list -> TK_ID");} /* Lista com um ID */
-                        | id_list TK_COMMA TK_ID                                                        { add_reduce_trace("id_list -> id_list TK_COMMA TK_ID");} /* Lista com mais IDs */
+/* id_list agora é uma lista de 'declarator' */
+id_list:
+                        declarator                                                                      { add_reduce_trace("id_list -> declarator"); }
+                        | id_list TK_COMMA declarator                                                   { add_reduce_trace("id_list -> id_list , declarator"); }
                         ;
 
+/* 'declarator' pode ser apenas um ID ou um ID com inicialização */
+declarator:
+                        TK_ID                                                                           { add_reduce_trace("declarator -> TK_ID"); }
+                        | TK_ID TK_ASSIGN expression                                                    { add_reduce_trace("declarator -> TK_ID = expression"); }
+                        ;
+                    
 /* Regra para comando de atribuição. */
 assignment:             TK_ID TK_ASSIGN expression TK_SEMICOLON                                         { add_reduce_trace("assignment -> TK_ID TK_ASSIGN expression TK_SEMICOLON");}
                         ;
@@ -269,8 +276,7 @@ void parsing_table(){
                  printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD RED "%-9s" RESET " ║ " BOLD RED "%-80s" RESET " ║\n",
                         position, action, detail);
              } else { // Imprime linhas normais (SHIFT ou REDUCE).
-                    printf("║ " BOLD YELLOW "%-9s" RESET " ║ " CYAN "%-9s" RESET " ║ " GREEN "%-80s" RESET " ║\n",
-                        position, action, detail);
+                    // printf("║ " BOLD YELLOW "%-9s" RESET " ║ " CYAN "%-9s" RESET " ║ " GREEN "%-80s" RESET " ║\n", position, action, detail);
              }
         } else {
              // Linha mal formatada no trace (não deve acontecer se add_reduce_trace e yyerror estiverem corretos)

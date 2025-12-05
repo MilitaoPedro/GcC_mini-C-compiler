@@ -27,7 +27,7 @@ all: $(TARGET)
 # Regra para criar o executável final
 $(TARGET): $(LEX_GEN_C) $(YACC_GEN_C)
 	@echo "Linkando o executável final..."
-	$(CC) $(CFLAGS) $(LEX_GEN_C) $(YACC_GEN_C) -o $(TARGET) -lfl
+	$(CC) $(CFLAGS) $(LEX_GEN_C) $(YACC_GEN_C) -o $(TARGET)
 	@echo "Compilador '$(TARGET)' criado com sucesso!"
 
 # Regra para gerar o parser (Bison) - Ainda gera o .dot e .output

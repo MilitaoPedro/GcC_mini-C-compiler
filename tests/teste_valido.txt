@@ -1,6 +1,6 @@
 // Testa as regras essenciais de forma mínima.
 
-int x;
+int x = 2;
 bool y;
 
 read(x);       // Testa read
