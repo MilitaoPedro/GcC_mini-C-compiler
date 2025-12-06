@@ -6,12 +6,13 @@ bool y;
 read(x);       // Testa read
 y = true;      // Testa assignment bool
 
-if (x) {       // Testa if (block)
+if (x) {
+    int b;       // Testa if (block)
     print(x);  // Testa print
     while(y)   // Testa while (block) aninhado
         y = false; // Testa assignment bool, while corpo unico (matched_statement)
 } else         // Testa else
-    x = 0;     // Testa assignment int (matched_statement)
+    int c;     // Testa assignment int (matched_statement)
 
 if(true) if(false) x=1; else x=2; // Testa dangling else com statement unico
 
