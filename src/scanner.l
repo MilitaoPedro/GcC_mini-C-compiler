@@ -15,6 +15,11 @@ typedef struct symbol {
     int column;                     /* Coluna onde inicia */
 } Symbol;
 
+typedef struct hash_node {
+    Symbol *symbol;                 /* Ponteiro para o símbolo */
+    struct hash_node *next;         /* Ponteiro para próximo nó (separate chaining) */
+} HashNode;
+
 /* Faz o lexer "enxergar" a string global do parser */
 extern char g_full_trace[];
 
@@ -28,16 +33,21 @@ extern char g_full_trace[];
 #define CYAN    "\033[36m"
 #define BOLD    "\033[1m"
 
-/* Tabela de símbolos (declaração e estado) */
-#define SYMBOL_TABLE_SIZE 999
-Symbol symbol_table[SYMBOL_TABLE_SIZE];
+/* Hash table para símbolos com separate chaining */
+#define HASH_TABLE_SIZE 997
+HashNode *symbol_hash_table[HASH_TABLE_SIZE];
 int symbol_count = 0;
+
+/* Lista para manter ordem de inserção (para impressão) */
+Symbol **symbol_order = NULL;
+int symbol_order_capacity = 0;
 
 /* Variáveis para controle de posição */
 int column_num = 1;
 int lexic_error_count = 0;
 
 /* Protótipos das funções */
+unsigned int hash_function(const char *lexeme);
 void insert_symbol(char *lexeme, yytoken_kind_t token_type);
 Symbol* lookup_symbol(char *lexeme);
 void print_symbol_table();
@@ -129,28 +139,57 @@ NEWLINE     \n
 
 %%
 
-/* Inserir símbolo na tabela (array) */
+/* Função hash DJB2 */
+unsigned int hash_function(const char *lexeme) {
+    unsigned int hash = 5381;
+    int c;
+    while ((c = *lexeme++)) {
+        hash = ((hash << 5) + hash) + c;
+    }
+    return hash % HASH_TABLE_SIZE;
+}
+
+/* Inserir símbolo na tabela de hash */
 void insert_symbol(char *lexeme, yytoken_kind_t token_type) {
     if (lookup_symbol(lexeme) != NULL)
         return; /* Já existe, não insere duplicata */
-    if (symbol_count >= SYMBOL_TABLE_SIZE) {
-        fprintf(stderr, "Symbol table overflow!\n");
-        exit(1);
+
+    /* Criar novo símbolo */
+    Symbol *new_symbol = (Symbol *)malloc(sizeof(Symbol));
+    new_symbol->id = symbol_count + 1;
+    new_symbol->lexeme = strdup(lexeme);
+    new_symbol->token_type = token_type;
+    new_symbol->line = yylineno;
+    new_symbol->column = column_num;
+
+    /* Calcular índice de hash */
+    unsigned int idx = hash_function(lexeme);
+
+    /* Criar novo nó e inserir no início da cadeia */
+    HashNode *new_node = (HashNode *)malloc(sizeof(HashNode));
+    new_node->symbol = new_symbol;
+    new_node->next = symbol_hash_table[idx];
+    symbol_hash_table[idx] = new_node;
+
+    /* Manter ordem de inserção para impressão */
+    if (symbol_count >= symbol_order_capacity) {
+        symbol_order_capacity = (symbol_order_capacity == 0) ? 10 : symbol_order_capacity * 2;
+        symbol_order = (Symbol **)realloc(symbol_order, symbol_order_capacity * sizeof(Symbol *));
     }
-    symbol_table[symbol_count].id = symbol_count + 1;
-    symbol_table[symbol_count].lexeme = strdup(lexeme);
-    symbol_table[symbol_count].token_type = token_type;
-    symbol_table[symbol_count].line = yylineno;
-    symbol_table[symbol_count].column = column_num;
+    symbol_order[symbol_count] = new_symbol;
     symbol_count++;
 }
 
-/* Buscar símbolo na tabela (array) */
+/* Buscar símbolo na tabela de hash */
 Symbol* lookup_symbol(char *lexeme) {
-    for (int i = 0; i < symbol_count; i++) {
-        if (strcmp(symbol_table[i].lexeme, lexeme) == 0) {
-            return &symbol_table[i];
+    unsigned int idx = hash_function(lexeme);
+    HashNode *node = symbol_hash_table[idx];
+
+    while (node != NULL) {
+        if (strcmp(node->symbol->lexeme, lexeme) == 0) {
+            return node->symbol;
         }
+        node = node->next;
     }
     return NULL;
 }
@@ -259,13 +298,15 @@ void print_symbol_table() {
     printf("╠═══════╦═══════════╦═══════════════════════╦════════════════════════╣\n");
     printf("║ " BOLD BLUE "%-5s" RESET " ║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "%-21s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║\n", "[ID]", "[Lin:Col]", "LEXEMA", "TIPO");
     printf("╠═══════╬═══════════╬═══════════════════════╬════════════════════════╣\n");
+
+    /* Usar symbol_order para manter a ordem de inserção */
     for (int i = 0; i < symbol_count; i++) {
         printf("║ " BOLD BLUE "[%03d]" RESET " ║ " BOLD YELLOW "[%03d:%03d]" RESET " ║ " BOLD CYAN "%-21s" RESET " ║ " BOLD GREEN "%-21s" RESET "  ║\n",
-                symbol_table[i].id,
-                symbol_table[i].line,
-                symbol_table[i].column,
-                symbol_table[i].lexeme, 
-                token_type_to_string(symbol_table[i].token_type));
+                symbol_order[i]->id,
+                symbol_order[i]->line,
+                symbol_order[i]->column,
+                symbol_order[i]->lexeme,
+                token_type_to_string(symbol_order[i]->token_type));
     }
     printf("╠═══════╩═══════════╩═══════════════════════╩════════════════════════╣\n");
     printf("║ " BOLD "Total de símbolos:" RESET "%-40d         ║\n", symbol_count);
