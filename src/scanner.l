@@ -99,7 +99,7 @@ NEWLINE     \n
     /* Sem return, o parser não recebe token */
 }
 
-{IDENTIFIER}    { print_token(TK_ID, yytext); insert_symbol(yytext, TK_ID); column_num += yyleng; return TK_ID; }
+{IDENTIFIER}    { print_token(TK_ID, yytext); yylval.sval = strdup(yytext); column_num += yyleng; return TK_ID; }
 
 {WHITESPACE}    { column_num += yyleng; }
 
