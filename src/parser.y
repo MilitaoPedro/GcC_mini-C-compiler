@@ -9,6 +9,7 @@ typedef struct symbol {
     int id;                         /* Identificador único do símbolo */
     int token_type;                 /* Tipo do token (TK_INT, TK_BOOL, etc) */
     int scope_depth;                /* Profundidade do escopo (0=global, 1,2,3...=aninhado) */
+    int scope_id;                   /* ID único do escopo onde o símbolo foi declarado */
 } Symbol;
 
 typedef struct hash_node {
@@ -25,6 +26,7 @@ typedef struct scope_table {
     Symbol **symbol_order;          /* Símbolos em ordem de inserção */
     char **symbol_lexeme;           /* Lexemas em ordem de inserção (para impressão) */
     int capacity;                   /* Capacidade do array */
+    int id;                         /* ID único desta instância de escopo */
 } ScopeTable;
 
 /* Tabela de símbolos global e ponteiro para escopo atual */
@@ -32,6 +34,7 @@ ScopeTable *global_scope = NULL;
 ScopeTable *current_scope = NULL;
 int global_symbol_count = 0;        /* Contador global de IDs */
 int current_scope_depth = 0;        /* Profundidade atual do escopo */
+int global_scope_counter = 0;
 
 /* Listas globais para impressão final */
 Symbol **all_symbols = NULL;
@@ -380,7 +383,10 @@ unsigned int hash_function(const char *lexeme) {
 void initialize_symbol_table() {
     global_scope = (ScopeTable *)malloc(sizeof(ScopeTable));
     memset(global_scope, 0, sizeof(ScopeTable));
+
+    global_scope->id = global_scope_counter++;
     global_scope->parent = NULL;
+
     current_scope = global_scope;
     current_scope_depth = 0;
 }
@@ -389,7 +395,10 @@ void initialize_symbol_table() {
 void enter_scope() {
     ScopeTable *new_scope = (ScopeTable *)malloc(sizeof(ScopeTable));
     memset(new_scope, 0, sizeof(ScopeTable));
+
+    new_scope->id = global_scope_counter++;
     new_scope->parent = current_scope;
+
     current_scope = new_scope;
     current_scope_depth++;
 }
@@ -412,6 +421,7 @@ void insert_symbol(char *lexeme, int token_type) {
     new_symbol->id = ++global_symbol_count;
     new_symbol->token_type = token_type;
     new_symbol->scope_depth = current_scope_depth;
+    new_symbol->scope_id = current_scope->id;
 
     /* Calcular índice de hash */
     unsigned int idx = hash_function(lexeme);
@@ -519,23 +529,24 @@ const char* token_type_to_string(int type) {
 
 /* Imprimir tabela de símbolos */
 void print_symbol_table() {
-    printf("╔══════════════════════════════════════════════════════════════════════════════╗\n");
-    printf("║                            " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET"                            ║\n");
-    printf("╠═══════╦═══════════════════════════╦════════════════════════╦═════════╣\n");
-    printf("║ " BOLD BLUE "%-5s" RESET " ║ " BOLD CYAN "%-27s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║ " BOLD MAGENTA "%-7s" RESET " ║\n", "[ID]", "LEXEMA", "TIPO", "[Depth]");
-    printf("╠═══════╬═══════════════════════════╬════════════════════════╬═════════╣\n");
+    printf("╔══════════════════════════════════════════════════════════════════════════════════╗\n");
+    printf("║                            " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET"                                    ║\n");
+    printf("╠═══════╦═════════════════════════════╦════════════════════════╦═════════╦═════════╣\n");
+    printf("║ " BOLD BLUE "%-5s" RESET " ║ " BOLD CYAN "%-27s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║ " BOLD MAGENTA "%-7s" RESET " ║ " BOLD BLUE "%-7s" RESET " ║\n", "[ID]", "LEXEMA", "TIPO", "DEPTH", "ESCOPO");
+    printf("╠═══════╬═════════════════════════════╬════════════════════════╬═════════╬═════════╣\n");
 
     /* Usar lista global de símbolos mantendo ordem de inserção */
     for (int i = 0; i < all_symbols_count; i++) {
-        printf("║ " BOLD BLUE "[%03d]" RESET " ║ " BOLD CYAN "%-27s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║ " BOLD MAGENTA "%-7d" RESET " ║\n",
+        printf("║ " BOLD BLUE "[%03d]" RESET " ║ " BOLD CYAN "%-27s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║ " BOLD MAGENTA "%-7d" RESET " ║ " BOLD BLUE "%-7d" RESET " ║\n",
                 all_symbols[i]->id,
                 all_lexemes[i],
                 token_type_to_string(all_symbols[i]->token_type),
-                all_symbols[i]->scope_depth);
+                all_symbols[i]->scope_depth,
+                all_symbols[i]->scope_id);
     }
-    printf("╠═══════╩═══════════════════════════╩════════════════════════╩═════════╣\n");
-    printf("║ " BOLD "Total de símbolos:" RESET "%-44d         ║\n", all_symbols_count);
-    printf("╚══════════════════════════════════════════════════════════════════════════════╝\n");
+    printf("╠═══════╩═════════════════════════════╩════════════════════════╩═════════╩═════════╣\n");
+    printf("║ " BOLD "Total de símbolos:" RESET "%-44d                   ║\n", all_symbols_count);
+    printf("╚══════════════════════════════════════════════════════════════════════════════════╝\n");
 }
 
 /*
