@@ -5,8 +5,7 @@ bool y;
 
 read(x);       // Testa read
 y = true;      // Testa assignment bool
-int b; 
-int b;
+
 if (x) {
     int b;       // Testa if (block)
     print(x);  // Testa print

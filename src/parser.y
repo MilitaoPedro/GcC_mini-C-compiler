@@ -12,10 +12,10 @@ typedef struct symbol {
     int scope_id;                   /* ID único do escopo onde o símbolo foi declarado */
     int line;                       /* Linha onde o símbolo foi declarado */
     int column;                     /* Coluna onde o símbolo foi declarado */
+    char *lexeme;                   /* Nome do símbolo (identificador) */
 } Symbol;
 
 typedef struct hash_node {
-    char *lexeme;                   /* O texto do identificador (necessário para lookup, não armazenado em Symbol) */
     Symbol *symbol;                 /* Ponteiro para o símbolo */
     struct hash_node *next;         /* Ponteiro para próximo nó (separate chaining) */
 } HashNode;
@@ -40,7 +40,6 @@ int global_scope_counter = 0;
 
 /* Listas globais para impressão final */
 Symbol **all_symbols = NULL;
-char **all_lexemes = NULL;
 int all_symbols_count = 0;
 int all_symbols_capacity = 0;
 
@@ -423,6 +422,7 @@ void insert_symbol(char *lexeme, int token_type) {
     new_symbol->id = ++global_symbol_count;
     new_symbol->token_type = token_type;
     new_symbol->scope_depth = current_scope_depth;
+    new_symbol->lexeme = strdup(lexeme);
     new_symbol->scope_id = current_scope->id;
     new_symbol->line = yylineno;         
     new_symbol->column = column_num;
@@ -432,7 +432,6 @@ void insert_symbol(char *lexeme, int token_type) {
 
     /* Criar novo nó e inserir no escopo atual */
     HashNode *new_node = (HashNode *)malloc(sizeof(HashNode));
-    new_node->lexeme = strdup(lexeme);
     new_node->symbol = new_symbol;
     new_node->next = current_scope->hash_table[idx];
     current_scope->hash_table[idx] = new_node;
@@ -444,17 +443,15 @@ void insert_symbol(char *lexeme, int token_type) {
         current_scope->symbol_lexeme = (char **)realloc(current_scope->symbol_lexeme, current_scope->capacity * sizeof(char *));
     }
     current_scope->symbol_order[current_scope->symbol_count] = new_symbol;
-    current_scope->symbol_lexeme[current_scope->symbol_count] = strdup(lexeme);
+    current_scope->symbol_lexeme[current_scope->symbol_count] = new_symbol->lexeme;
     current_scope->symbol_count++;
 
     /* Adicionar à lista global */
     if (all_symbols_count >= all_symbols_capacity) {
         all_symbols_capacity = (all_symbols_capacity == 0) ? 20 : all_symbols_capacity * 2;
         all_symbols = (Symbol **)realloc(all_symbols, all_symbols_capacity * sizeof(Symbol *));
-        all_lexemes = (char **)realloc(all_lexemes, all_symbols_capacity * sizeof(char *));
     }
     all_symbols[all_symbols_count] = new_symbol;
-    all_lexemes[all_symbols_count] = strdup(lexeme);
     all_symbols_count++;
 }
 
@@ -467,7 +464,7 @@ Symbol* lookup_symbol(char *lexeme) {
         HashNode *node = scope->hash_table[idx];
 
         while (node != NULL) {
-            if (strcmp(node->lexeme, lexeme) == 0) {
+            if (strcmp(node->symbol->lexeme, lexeme) == 0) {
                 return node->symbol;
             }
             node = node->next;
@@ -545,7 +542,7 @@ void print_symbol_table() {
                 all_symbols[i]->id,
                 all_symbols[i]->line,
                 all_symbols[i]->column,
-                all_lexemes[i],
+                all_symbols[i]->lexeme,
                 token_type_to_string(all_symbols[i]->token_type),
                 all_symbols[i]->scope_depth,
                 all_symbols[i]->scope_id);
