@@ -276,7 +276,7 @@ assignment:             TK_ID TK_ASSIGN expression TK_SEMICOLON                 
                                                                                                                 yyerror(msg);
                                                                                                             } else {
                                                                                                                 if (s->data_type != $3 && $3 != DT_ERROR) {
-                                                                                                                    yyerror("Semantic Error: Atribuição com tipos incompatíveis.");
+                                                                                                                    yyerror("Semantic Error: Atribuicao com tipos incompativeis.");
                                                                                                                 }
                                                                                                             }
                                                                                                             add_reduce_trace("assignment");
@@ -358,12 +358,12 @@ expression:             TK_INTEGER                                              
                         /* Expressões Relacionais */
                         | expression TK_EQ expression                                                   {
                                                                                                             if ($1 == $3 && $1 != DT_ERROR) $$ = DT_BOOL;
-                                                                                                            else { yyerror("Semantic Error: Tipos incompatíveis na comparação '=='."); $$ = DT_ERROR; }
+                                                                                                            else { yyerror("Semantic Error: Tipos incompativeis na comparacaoo '=='."); $$ = DT_ERROR; }
                                                                                                             add_reduce_trace("expression -> expression == expression");
                                                                                                         }
                         | expression TK_NE expression                                                   { 
                                                                                                             if ($1 == $3 && $1 != DT_ERROR) $$ = DT_BOOL;
-                                                                                                            else { yyerror("Semantic Error: Tipos incompatíveis na comparação '!='."); $$ = DT_ERROR; }
+                                                                                                            else { yyerror("Semantic Error: Tipos incompativeis na comparacaoo '!='."); $$ = DT_ERROR; }
                                                                                                             add_reduce_trace("expression -> expression != expression");
                                                                                                         }
                         | expression TK_LT expression                                                   { 
@@ -497,7 +497,7 @@ void parsing_table(){
     // Imprime o rodapé da tabela com o status final.
     printf("╠═══════════╩═══════════╩══════════════════════════════════════════════════════════════════════════════════╣\n");
     if (sintatic_error_count == 0) {
-        printf("║ " BOLD GREEN "Análise concluída com sucesso!                                                                          "RESET"║\n");
+        printf("║ " BOLD GREEN "Análise concluída com sucesso!                                                                           "RESET"║\n");
     } else{
         // Usa %.3d para garantir 3 dígitos na contagem (ex: 001 erro).
         printf("║ " BOLD RED "Análise concluída com %.3d erro(s).                                                                       "RESET"║\n", sintatic_error_count);
@@ -551,9 +551,7 @@ void exit_scope() {
 
 /* Inserir símbolo no escopo atual */
 void insert_symbol(char *lexeme, int token_type, int data_type) {
-    if (lookup_symbol(lexeme) != NULL)
-        return; /* Ja existe em algum escopo, não insere duplicata */
-
+    
     /* Criar novo símbolo com id, type e scope_depth */
     Symbol *new_symbol = (Symbol *)malloc(sizeof(Symbol));
     new_symbol->id = ++global_symbol_count;
