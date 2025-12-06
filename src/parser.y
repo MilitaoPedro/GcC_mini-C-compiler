@@ -362,8 +362,8 @@ expression:             TK_INTEGER                                              
                                                                                                             add_reduce_trace("expression -> expression == expression");
                                                                                                         }
                         | expression TK_NE expression                                                   { 
-                                                                                                            if ($1 == DT_INTEGER && $3 == DT_INTEGER) $$ = DT_BOOL;
-                                                                                                            else { yyerror("Semantic Error: Comparação '!=' requer inteiros."); $$ = DT_ERROR;}
+                                                                                                            if ($1 == $3 && $1 != DT_ERROR) $$ = DT_BOOL;
+                                                                                                            else { yyerror("Semantic Error: Tipos incompatíveis na comparação '!='."); $$ = DT_ERROR; }
                                                                                                             add_reduce_trace("expression -> expression != expression");
                                                                                                         }
                         | expression TK_LT expression                                                   { 
