@@ -4,7 +4,67 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ------------------------- Protótipos e Globais do Lexer ------------------------- */
+/* ======================== ESTRUTURAS DA TABELA DE SÍMBOLOS ======================== */
+typedef struct symbol {
+    int id;                         /* Identificador único do símbolo */
+    int token_type;                 /* Tipo do token (TK_INT, TK_BOOL, etc) */
+    int scope_depth;                /* Profundidade do escopo (0=global, 1,2,3...=aninhado) */
+    int scope_id;                   /* ID único do escopo onde o símbolo foi declarado */
+    int line;                       /* Linha onde o símbolo foi declarado */
+    int column;                     /* Coluna onde o símbolo foi declarado */
+    char *lexeme;                   /* Nome do símbolo (identificador) */
+} Symbol;
+
+typedef struct hash_node {
+    Symbol *symbol;                 /* Ponteiro para o símbolo */
+    struct hash_node *next;         /* Ponteiro para próximo nó (separate chaining) */
+} HashNode;
+
+/* Estrutura de uma tabela de símbolos (escopo) */
+typedef struct scope_table {
+    HashNode *hash_table[997];      /* Hash table para este escopo */
+    int symbol_count;               /* Número de símbolos neste escopo */
+    struct scope_table *parent;     /* Ponteiro para escopo pai (NULL para global) */
+    Symbol **symbol_order;          /* Símbolos em ordem de inserção */
+    char **symbol_lexeme;           /* Lexemas em ordem de inserção (para impressão) */
+    int capacity;                   /* Capacidade do array */
+    int id;                         /* ID único desta instância de escopo */
+} ScopeTable;
+
+/* Tabela de símbolos global e ponteiro para escopo atual */
+ScopeTable *global_scope = NULL;
+ScopeTable *current_scope = NULL;
+int global_symbol_count = 0;        /* Contador global de IDs */
+int current_scope_depth = 0;        /* Profundidade atual do escopo */
+int global_scope_counter = 0;
+
+/* Listas globais para impressão final */
+Symbol **all_symbols = NULL;
+int all_symbols_count = 0;
+int all_symbols_capacity = 0;
+
+/* Definições de cores ANSI */
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define BOLD    "\033[1m"
+
+/* ======================== PROTÓTIPOS DE FUNÇÕES ======================== */
+unsigned int hash_function(const char *lexeme);
+void initialize_symbol_table();
+void enter_scope();
+void exit_scope();
+void insert_symbol(char *lexeme, int token_type);
+Symbol* lookup_symbol(char *lexeme);
+void print_symbol_table();
+void collect_all_symbols(ScopeTable *scope);
+const char* token_type_to_string(int type);
+
+/* ======================== PROTÓTIPOS E GLOBAIS DO LEXER ======================== */
 /* Declarações 'extern' informam ao Bison que estas funções/variáveis existem
    em outro arquivo (gerado pelo Flex, scanner.l) e serão ligadas na compilação. */
 
@@ -13,9 +73,6 @@ extern FILE *yyin;                  // Ponteiro para o arquivo de entrada sendo 
 extern int yylineno;                // Variável global do Flex que armazena o número da linha atual.
 extern int lexic_error_count;       // Contador de erros léxicos (definido no scanner.l).
 extern int column_num;              // Contador de coluna atual (definido no scanner.l).
-
-/* Funções auxiliares que ainda estão no scanner.l */
-extern void print_symbol_table();   // Função para imprimir a tabela de símbolos (do lexer).
 
 /* Contador de erros sintáticos (definido neste arquivo). */
 int sintatic_error_count = 0;
@@ -108,17 +165,17 @@ matched_statement:
 
                         /* Um IF-ELSE completo é um matched_statement SE AMBOS os corpos (then/else)
                            também forem matched_statements. Isso força o ELSE a se ligar ao IF interno. */
-                        | TK_IF TK_LPAREN expression TK_RPAREN then TK_ELSE then                        { add_reduce_trace("matched_statement -> IF ( expr ) then ELSE then"); }
+                        | if_head then_part else_head then_part  { add_reduce_trace("matched_statement -> IF ( expr ) then ELSE then"); }
                         ;
 
 /* UNMATCHED_STATEMENT: Um comando que termina em um IF sem ELSE,
    criando a potencial ambiguidade. */
 unmatched_statement:
                         /* Um IF sem ELSE. O corpo (then) pode ser qualquer tipo de statement. */
-                        TK_IF TK_LPAREN expression TK_RPAREN then                                       { add_reduce_trace("unmatched_statement -> IF ( expr ) then"); }
+                        if_head then_part  { add_reduce_trace("unmatched_statement -> IF ( expr ) then"); }
 
                         /* Um IF-ELSE onde a parte ELSE é ela mesma um unmatched_statement. */
-                        | TK_IF TK_LPAREN expression TK_RPAREN then TK_ELSE unmatched_statement         { add_reduce_trace("unmatched_statement -> IF ( expr ) then ELSE unmatched_stmt"); }
+                        | if_head then_part else_head unmatched_statement { exit_scope(); } { add_reduce_trace("unmatched_statement -> IF ( expr ) then ELSE unmatched_stmt"); }
                         ;
 
 /* 'then' representa o corpo de um comando IF ou WHILE.
@@ -127,6 +184,20 @@ then:                   TK_LBRACE statements TK_RBRACE                          
                         | matched_statement                                                             { add_reduce_trace("then -> matched_statement"); }
                         ;
 
+/* Regra auxiliar para unificar a abertura de escopo do IF */
+if_head: 
+    TK_IF TK_LPAREN expression TK_RPAREN { enter_scope(); }
+    ;
+
+/* Consome o ELSE e abre o escopo imediatamente */
+else_head: 
+    TK_ELSE { enter_scope(); }
+    ;
+
+/* Regra auxiliar para consumir o 'then' e fechar o escopo imediatamente */
+then_part:
+    then { exit_scope(); }
+    ;
 
 /* Regra para declaração de variáveis. */
 declaration:            type id_list TK_SEMICOLON                                                       { add_reduce_trace("declaration -> type id_list TK_SEMICOLON");}
@@ -163,8 +234,8 @@ print:                  TK_PRINT TK_LPAREN expression TK_RPAREN TK_SEMICOLON    
 
 /* Regra para o comando 'while'. O corpo deve ser um bloco ou um matched_statement. */
 while_stmt:
-                        TK_WHILE TK_LPAREN expression TK_RPAREN TK_LBRACE statements TK_RBRACE          { add_reduce_trace("while_stmt -> WHILE ( expr ) { statements }"); }
-                        | TK_WHILE TK_LPAREN expression TK_RPAREN matched_statement                     { add_reduce_trace("while_stmt -> WHILE ( expr ) matched_statement"); }
+                        TK_WHILE TK_LPAREN expression TK_RPAREN { enter_scope(); } TK_LBRACE statements TK_RBRACE { exit_scope(); }   { add_reduce_trace("while_stmt -> WHILE ( expr ) { statements }"); }
+                        | TK_WHILE TK_LPAREN expression TK_RPAREN { enter_scope(); } matched_statement { exit_scope(); }            { add_reduce_trace("while_stmt -> WHILE ( expr ) matched_statement"); }
                         ;
 
 /* Regra para expressões. Cobre literais, identificadores, parênteses e todas as operações.
@@ -297,6 +368,190 @@ void parsing_table(){
     printf("╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝\n");
 }
 
+/* ======================== IMPLEMENTAÇÃO DA TABELA DE SÍMBOLOS ======================== */
+
+/* Função hash DJB2 */
+unsigned int hash_function(const char *lexeme) {
+    unsigned int hash = 5381;
+    int c;
+    while ((c = *lexeme++)) {
+        hash = ((hash << 5) + hash) + c;
+    }
+    return hash % 997;
+}
+
+/* Inicializar tabela de símbolos global */
+void initialize_symbol_table() {
+    global_scope = (ScopeTable *)malloc(sizeof(ScopeTable));
+    memset(global_scope, 0, sizeof(ScopeTable));
+
+    global_scope->id = global_scope_counter++;
+    global_scope->parent = NULL;
+
+    current_scope = global_scope;
+    current_scope_depth = 0;
+}
+
+/* Entrar em novo escopo (criar nova tabela de símbolos filha) */
+void enter_scope() {
+    ScopeTable *new_scope = (ScopeTable *)malloc(sizeof(ScopeTable));
+    memset(new_scope, 0, sizeof(ScopeTable));
+
+    new_scope->id = global_scope_counter++;
+    new_scope->parent = current_scope;
+
+    current_scope = new_scope;
+    current_scope_depth++;
+}
+
+/* Sair do escopo atual (voltar ao escopo pai) */
+void exit_scope() {
+    if (current_scope->parent != NULL) {
+        current_scope = current_scope->parent;
+        current_scope_depth--;
+    }
+}
+
+/* Inserir símbolo no escopo atual */
+void insert_symbol(char *lexeme, int token_type) {
+    if (lookup_symbol(lexeme) != NULL)
+        return; /* Já existe em algum escopo, não insere duplicata */
+
+    /* Criar novo símbolo com id, type e scope_depth */
+    Symbol *new_symbol = (Symbol *)malloc(sizeof(Symbol));
+    new_symbol->id = ++global_symbol_count;
+    new_symbol->token_type = token_type;
+    new_symbol->scope_depth = current_scope_depth;
+    new_symbol->lexeme = strdup(lexeme);
+    new_symbol->scope_id = current_scope->id;
+    new_symbol->line = yylineno;         
+    new_symbol->column = column_num;
+
+    /* Calcular índice de hash */
+    unsigned int idx = hash_function(lexeme);
+
+    /* Criar novo nó e inserir no escopo atual */
+    HashNode *new_node = (HashNode *)malloc(sizeof(HashNode));
+    new_node->symbol = new_symbol;
+    new_node->next = current_scope->hash_table[idx];
+    current_scope->hash_table[idx] = new_node;
+
+    /* Manter ordem de inserção para impressão neste escopo */
+    if (current_scope->symbol_count >= current_scope->capacity) {
+        current_scope->capacity = (current_scope->capacity == 0) ? 10 : current_scope->capacity * 2;
+        current_scope->symbol_order = (Symbol **)realloc(current_scope->symbol_order, current_scope->capacity * sizeof(Symbol *));
+        current_scope->symbol_lexeme = (char **)realloc(current_scope->symbol_lexeme, current_scope->capacity * sizeof(char *));
+    }
+    current_scope->symbol_order[current_scope->symbol_count] = new_symbol;
+    current_scope->symbol_lexeme[current_scope->symbol_count] = new_symbol->lexeme;
+    current_scope->symbol_count++;
+
+    /* Adicionar à lista global */
+    if (all_symbols_count >= all_symbols_capacity) {
+        all_symbols_capacity = (all_symbols_capacity == 0) ? 20 : all_symbols_capacity * 2;
+        all_symbols = (Symbol **)realloc(all_symbols, all_symbols_capacity * sizeof(Symbol *));
+    }
+    all_symbols[all_symbols_count] = new_symbol;
+    all_symbols_count++;
+}
+
+/* Buscar símbolo na árvore de escopos (começa no escopo atual e sobe para o pai) */
+Symbol* lookup_symbol(char *lexeme) {
+    ScopeTable *scope = current_scope;
+
+    while (scope != NULL) {
+        unsigned int idx = hash_function(lexeme);
+        HashNode *node = scope->hash_table[idx];
+
+        while (node != NULL) {
+            if (strcmp(node->symbol->lexeme, lexeme) == 0) {
+                return node->symbol;
+            }
+            node = node->next;
+        }
+        scope = scope->parent; /* Busca no escopo pai */
+    }
+    return NULL;
+}
+
+/* Converter token_type (int) em string para impressão */
+const char* token_type_to_string(int type) {
+    switch (type) {
+        /* Palavras-chave e Tipos */
+        case 258: return "TK_INT_TYPE";      // TK_INT
+        case 259: return "TK_BOOL_TYPE";     // TK_BOOL
+        case 260: return "TK_IF";
+        case 261: return "TK_ELSE";
+        case 262: return "TK_WHILE";
+        case 263: return "TK_PRINT";
+        case 264: return "TK_READ";
+        case 265: return "TK_TRUE";
+        case 266: return "TK_FALSE";
+
+        /* Operadores Relacionais */
+        case 267: return "TK_EQ";            // ==
+        case 268: return "TK_NE";            // !=
+        case 269: return "TK_LE";            // <=
+        case 270: return "TK_GE";            // >=
+        case 271: return "TK_LT";            // <
+        case 272: return "TK_GT";            // >
+
+        /* Operadores Lógicos */
+        case 273: return "TK_LOGICAL_AND";   // &&
+        case 274: return "TK_LOGICAL_OR";    // ||
+        case 275: return "TK_LOGICAL_NOT";   // !
+
+        /* Operadores Aritméticos */
+        case 276: return "TK_PLUS";          // +
+        case 277: return "TK_MINUS";         // -
+        case 278: return "TK_MULT";          // *
+        case 279: return "TK_DIV";           // /
+        case 280: return "TK_MOD";           // %
+
+        /* Operador de Atribuição */
+        case 281: return "TK_ASSIGN";        // =
+
+        /* Símbolos de Pontuação */
+        case 282: return "TK_SEMICOLON";     // ;
+        case 283: return "TK_COMMA";         // ,
+        case 284: return "TK_LPAREN";        // (
+        case 285: return "TK_RPAREN";        // )
+        case 286: return "TK_LBRACE";        // {
+        case 287: return "TK_RBRACE";        // }
+
+        /* Literais e Identificadores */
+        case 288: return "TK_INTEGER";
+        case 289: return "TK_ID";
+
+        /* Caso Padrão (Erro ou Token Desconhecido) */
+        default: return "UNKNOWN_TOKEN";
+    }
+}
+
+/* Imprimir tabela de símbolos */
+void print_symbol_table() {
+    printf("╔══════════════════════════════════════════════════════════════════════════════════════════════╗\n");
+    printf("║                            " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET"                                                ║\n");
+    printf("╠═══════╦═══════════╦═════════════════════════════╦════════════════════════╦═════════╦═════════╣\n");
+    printf("║ " BOLD BLUE "%-5s" RESET " ║ " BOLD BLUE "%-5s" RESET " ║ " BOLD CYAN "%-27s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║ " BOLD MAGENTA "%-7s" RESET " ║ " BOLD BLUE "%-7s" RESET " ║\n", "[ID]", "[Lin:Col]", "LEXEMA", "TIPO", "DEPTH", "ESCOPO");
+    printf("╠═══════╬═══════════╬═════════════════════════════╬════════════════════════╬═════════╬═════════╣\n");
+
+    /* Usar lista global de símbolos mantendo ordem de inserção */
+    for (int i = 0; i < all_symbols_count; i++) {
+        printf("║ " BOLD BLUE "[%03d]" RESET " ║ " BOLD YELLOW "[%03d:%03d]" RESET " ║ " BOLD CYAN "%-27s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║ " BOLD MAGENTA "%-7d" RESET " ║ " BOLD BLUE "%-7d" RESET " ║\n",
+                all_symbols[i]->id,
+                all_symbols[i]->line,
+                all_symbols[i]->column,
+                all_symbols[i]->lexeme,
+                token_type_to_string(all_symbols[i]->token_type),
+                all_symbols[i]->scope_depth,
+                all_symbols[i]->scope_id);
+    }
+    printf("╠═══════╩═══════════╩═════════════════════════════╩════════════════════════╩═════════╩═════════╣\n");
+    printf("║ " BOLD "Total de símbolos:" RESET "%-44d                               ║\n", all_symbols_count);
+    printf("╚══════════════════════════════════════════════════════════════════════════════════════════════╝\n");
+}
+
 /*
    Responsável por:
    1. Validar argumentos de linha de comando.
@@ -323,8 +578,8 @@ int main(int argc, char *argv[]) {
         return 1; // Retorna erro.
     }
 
-    /* Inicialização da tabela de símbolos (se necessário) - atualmente feita no lexer. */
-    /* symbol_count = 0; */
+    /* Inicialização da tabela de símbolos com escopo global */
+    initialize_symbol_table();
 
     /* Imprime o cabeçalho da tabela de ANÁLISE LÉXICA. */
     printf("╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
