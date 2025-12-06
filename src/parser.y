@@ -10,6 +10,8 @@ typedef struct symbol {
     int token_type;                 /* Tipo do token (TK_INT, TK_BOOL, etc) */
     int scope_depth;                /* Profundidade do escopo (0=global, 1,2,3...=aninhado) */
     int scope_id;                   /* ID único do escopo onde o símbolo foi declarado */
+    int line;                       /* Linha onde o símbolo foi declarado */
+    int column;                     /* Coluna onde o símbolo foi declarado */
 } Symbol;
 
 typedef struct hash_node {
@@ -422,6 +424,8 @@ void insert_symbol(char *lexeme, int token_type) {
     new_symbol->token_type = token_type;
     new_symbol->scope_depth = current_scope_depth;
     new_symbol->scope_id = current_scope->id;
+    new_symbol->line = yylineno;         
+    new_symbol->column = column_num;
 
     /* Calcular índice de hash */
     unsigned int idx = hash_function(lexeme);
@@ -529,24 +533,26 @@ const char* token_type_to_string(int type) {
 
 /* Imprimir tabela de símbolos */
 void print_symbol_table() {
-    printf("╔══════════════════════════════════════════════════════════════════════════════════╗\n");
-    printf("║                            " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET"                                    ║\n");
-    printf("╠═══════╦═════════════════════════════╦════════════════════════╦═════════╦═════════╣\n");
-    printf("║ " BOLD BLUE "%-5s" RESET " ║ " BOLD CYAN "%-27s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║ " BOLD MAGENTA "%-7s" RESET " ║ " BOLD BLUE "%-7s" RESET " ║\n", "[ID]", "LEXEMA", "TIPO", "DEPTH", "ESCOPO");
-    printf("╠═══════╬═════════════════════════════╬════════════════════════╬═════════╬═════════╣\n");
+    printf("╔══════════════════════════════════════════════════════════════════════════════════════════════╗\n");
+    printf("║                            " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET"                                                ║\n");
+    printf("╠═══════╦═══════════╦═════════════════════════════╦════════════════════════╦═════════╦═════════╣\n");
+    printf("║ " BOLD BLUE "%-5s" RESET " ║ " BOLD BLUE "%-5s" RESET " ║ " BOLD CYAN "%-27s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║ " BOLD MAGENTA "%-7s" RESET " ║ " BOLD BLUE "%-7s" RESET " ║\n", "[ID]", "[Lin:Col]", "LEXEMA", "TIPO", "DEPTH", "ESCOPO");
+    printf("╠═══════╬═══════════╬═════════════════════════════╬════════════════════════╬═════════╬═════════╣\n");
 
     /* Usar lista global de símbolos mantendo ordem de inserção */
     for (int i = 0; i < all_symbols_count; i++) {
-        printf("║ " BOLD BLUE "[%03d]" RESET " ║ " BOLD CYAN "%-27s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║ " BOLD MAGENTA "%-7d" RESET " ║ " BOLD BLUE "%-7d" RESET " ║\n",
+        printf("║ " BOLD BLUE "[%03d]" RESET " ║ " BOLD YELLOW "[%03d:%03d]" RESET " ║ " BOLD CYAN "%-27s" RESET " ║ " BOLD GREEN "%-22s" RESET " ║ " BOLD MAGENTA "%-7d" RESET " ║ " BOLD BLUE "%-7d" RESET " ║\n",
                 all_symbols[i]->id,
+                all_symbols[i]->line,
+                all_symbols[i]->column,
                 all_lexemes[i],
                 token_type_to_string(all_symbols[i]->token_type),
                 all_symbols[i]->scope_depth,
                 all_symbols[i]->scope_id);
     }
-    printf("╠═══════╩═════════════════════════════╩════════════════════════╩═════════╩═════════╣\n");
-    printf("║ " BOLD "Total de símbolos:" RESET "%-44d                   ║\n", all_symbols_count);
-    printf("╚══════════════════════════════════════════════════════════════════════════════════╝\n");
+    printf("╠═══════╩═══════════╩═════════════════════════════╩════════════════════════╩═════════╩═════════╣\n");
+    printf("║ " BOLD "Total de símbolos:" RESET "%-44d                               ║\n", all_symbols_count);
+    printf("╚══════════════════════════════════════════════════════════════════════════════════════════════╝\n");
 }
 
 /*
