@@ -42,4 +42,4 @@ jobs:
       - name: Executar Teste de Fumaça (Smoke Test)
         run: |
           # Executa o compilador. Se ele falhar (retornar != 0), o workflow falha.
-          src/compilador ./tests/teste_valido.txt
+          src/compilador ./tests/teste_semantico_valido.mc

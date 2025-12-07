@@ -25,7 +25,6 @@ int column_num = 1;
 int lexic_error_count = 0;
 
 /* Protótipos das funções */
-void insert_symbol(char *lexeme, int token_type);
 void print_token(yytoken_kind_t token_type, char *lexeme);
 void report_error(char *message);
 extern const char* token_type_to_string(yytoken_kind_t type);  /* Definida no parser.y */
@@ -99,7 +98,7 @@ NEWLINE     \n
     /* Sem return, o parser não recebe token */
 }
 
-{IDENTIFIER}    { print_token(TK_ID, yytext); insert_symbol(yytext, TK_ID); column_num += yyleng; return TK_ID; }
+{IDENTIFIER}    { print_token(TK_ID, yytext); yylval.sval = strdup(yytext); column_num += yyleng; return TK_ID; }
 
 {WHITESPACE}    { column_num += yyleng; }
 
