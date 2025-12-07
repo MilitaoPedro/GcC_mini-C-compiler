@@ -235,11 +235,14 @@ then:                   TK_LBRACE statements TK_RBRACE                          
 if_head: 
     TK_IF TK_LPAREN expression TK_RPAREN                                                                {
                                                                                                             enter_scope();
-                                                                                                            if ($3.type != DT_BOOL) yyerror("Semantic Error: Operacao 'if' requer boleanos.");
-                                                                                                            
-                                                                                                            /* GERAÇÃO DE CÓDIGO */
-                                                                                                            char *L_false = newLabel(); // Gera "L1"
-                                                                                                            emit("ifFalse %s goto %s", $3.addr, L_false);
+                                                                                                            char *L_false = newLabel(); // Gera o label SEMPRE para não quebrar a lógica
+        
+                                                                                                            if ($3.type != DT_BOOL) {
+                                                                                                                yyerror("Semantic Error: Condicao do 'if' deve ser booleana.");
+                                                                                                                /* Não emite o ifFalse se deu erro */
+                                                                                                            } else {
+                                                                                                                emit("ifFalse %s goto %s", $3.addr, L_false);
+                                                                                                            }
                                                                                                             $$ = L_false; // Retorna "L1" para ser usado nas regras pai
                                                                                                             
                                                                                                             add_reduce_trace("if_head -> if ( expression )");
@@ -315,8 +318,7 @@ declarator:
                                                                                                             /* 2. Verificar tipo da atribuição */
                                                                                                             if (current_declaration_type != $3.type) {
                                                                                                                 yyerror("Semantic Error: Tipo da expressao incompativel com a variavel na inicializacao.");
-                                                                                                            }
-                                                                                                            emit("%s = %s", $1, $3.addr);
+                                                                                                            } else { emit("%s = %s", $1, $3.addr); }
                                                                                                             add_reduce_trace("declarator -> TK_ID = expression");
                                                                                                         }
                         ;
@@ -330,8 +332,7 @@ assignment:             TK_ID TK_ASSIGN expression TK_SEMICOLON                 
                                                                                                             } else {
                                                                                                                 if (s->data_type != $3.type && $3.type != DT_ERROR) {
                                                                                                                     yyerror("Semantic Error: Atribuicao com tipos incompativeis.");
-                                                                                                                }
-                                                                                                                emit("%s = %s", $1, $3.addr);
+                                                                                                                } else { emit("%s = %s", $1, $3.addr); }
                                                                                                             }
                                                                                                             add_reduce_trace("assignment");
                                                                                                         }
@@ -361,7 +362,10 @@ print:  TK_PRINT TK_LPAREN expression TK_RPAREN TK_SEMICOLON                    
                                                                                                             /* A expressão já calculou seu tipo e endereço em $3 */
                                                                                                             
                                                                                                             /* 2. Geração de Código: print t1 */
-                                                                                                            emit("print %s", $3.addr);
+                                                                                                            /* Só gera código se a expressão for válida */
+                                                                                                            if ($3.type != DT_ERROR) {
+                                                                                                                emit("print %s", $3.addr);
+                                                                                                            }
                                                                                                             
                                                                                                             add_reduce_trace("print -> TK_PRINT ( expression ) TK_SEMICOLON");
                                                                                                         }
@@ -377,46 +381,47 @@ while_start:            TK_WHILE                                                
 
 /* Regra para o comando 'while'. O corpo deve ser um bloco ou um matched_statement. */
 /* Regra para o comando 'while' CORRIGIDA */
-while_stmt:
-    while_start TK_LPAREN expression TK_RPAREN 
-    { 
-        /* --- AÇÃO DE MEIO DE REGRA (Executa ANTES do corpo) --- */
+while_stmt:             while_start TK_LPAREN expression TK_RPAREN  { 
+                                                                        /* --- AÇÃO DE MEIO DE REGRA (Executa ANTES do corpo) --- */
+                                                                        
+                                                                        /* 1. Verificação Semântica */
+                                                                        char *L_end = newLabel(); // Gera o label SEMPRE
         
-        /* 1. Verificação Semântica */
-        if ($3.type != DT_BOOL) yyerror("Semantic Error: Condicao do 'while' deve ser booleana.");
-        
-        /* 2. Geração de Código: Teste de Saída */
-        char *L_end = newLabel();
-        emit("ifFalse %s goto %s", $3.addr, L_end);
-        
-        /* 3. Escopo */
-        enter_scope(); 
+                                                                        if ($3.type != DT_BOOL) {
+                                                                            yyerror("Semantic Error: Condicao do 'while' deve ser booleana.");
+                                                                        } else {
+                                                                            /* Só emite o pulo se a condição for válida */
+                                                                            emit("ifFalse %s goto %s", $3.addr, L_end);
+                                                                        }
+                                                                        /* 3. Escopo */
+                                                                        enter_scope(); 
 
-        /* 4. Guardar L_end na pilha para usar no final */
-        $<sval>$ = L_end; 
-    } 
-    TK_LBRACE statements TK_RBRACE 
-    { 
-        /* --- AÇÃO FINAL (Executa DEPOIS do corpo) --- */
-        exit_scope(); 
-        
-        char *L_start = $1;      // Recupera L2 (do while_start)
-        char *L_end = $<sval>5;  // Recupera L4 (da ação do meio) -> Note que agora é o índice 5
-        
-        emit("goto %s", L_start); // Volta para testar a condição
-        emitLabel(L_end);         // Define o label de saída (L4)
-        
-        add_reduce_trace("while_stmt -> WHILE ( expr ) { statements }"); 
-    }
+                                                                        /* 4. Guardar L_end na pilha para usar no final */
+                                                                        $<sval>$ = L_end; 
+                                                                    }  TK_LBRACE statements TK_RBRACE   { 
+                                                                                                            /* --- AÇÃO FINAL (Executa DEPOIS do corpo) --- */
+                                                                                                            exit_scope(); 
+                                                                                                            
+                                                                                                            char *L_start = $1;      // Recupera L2 (do while_start)
+                                                                                                            char *L_end = $<sval>5;  // Recupera L4 (da ação do meio) -> Note que agora é o índice 5
+                                                                                                            
+                                                                                                            emit("goto %s", L_start); // Volta para testar a condição
+                                                                                                            emitLabel(L_end);         // Define o label de saída (L4)
+                                                                                                            
+                                                                                                            add_reduce_trace("while_stmt -> WHILE ( expr ) { statements }"); 
+                                                                                                        }
     
     /* Versão para matched_statement único */
     | while_start TK_LPAREN expression TK_RPAREN 
     { 
-        /* --- AÇÃO DE MEIO DE REGRA --- */
-        if ($3.type != DT_BOOL) yyerror("Semantic Error: Condicao do 'while' deve ser booleana.");
+        char *L_end = newLabel(); // Gera o label SEMPRE
         
-        char *L_end = newLabel();
-        emit("ifFalse %s goto %s", $3.addr, L_end);
+        if ($3.type != DT_BOOL) {
+            yyerror("Semantic Error: Condicao do 'while' deve ser booleana.");
+        } else {
+            /* Só emite o pulo se a condição for válida */
+            emit("ifFalse %s goto %s", $3.addr, L_end);
+        }
         
         enter_scope(); 
         $<sval>$ = L_end; 
