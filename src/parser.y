@@ -456,6 +456,8 @@ expression:             TK_INTEGER                                              
                                                                                                             Symbol* s = lookup_symbol($1);
                                                                                                             if (s == NULL) {
                                                                                                                 char msg[200]; sprintf(msg, "Semantic Error: Variavel '%s' nao declarada.", $1);
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
                                                                                                                 yyerror(msg);
                                                                                                                 $$.type = DT_ERROR;
                                                                                                             } else {
@@ -473,7 +475,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s + %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Operacao '+' requer inteiros."); $$.type = DT_ERROR;}
+                                                                                                            else { 
+                                                                                                                    yyerror("Semantic Error: Operacao '+' requer inteiros.");
+                                                                                                                    $$.type = DT_ERROR;
+                                                                                                                    $$.addr = "ERR";
+                                                                                                                }
                                                                                                             add_reduce_trace("expression -> expression - expression");
                                                                                                         }
                         | expression TK_MINUS expression                                                { 
@@ -482,7 +488,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s - %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Operacao '-' requer inteiros."); $$.type = DT_ERROR;}
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Operacao '-' requer inteiros.");
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
                                                                                                             add_reduce_trace("expression -> expression - expression");
                                                                                                         }
                         | expression TK_MULT expression                                                 { 
@@ -491,7 +501,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s * %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Operacao '*' requer inteiros."); $$.type = DT_ERROR;}
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Operacao '*' requer inteiros."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
                                                                                                             add_reduce_trace("expression -> expression * expression");
                                                                                                         }
                         | expression TK_DIV expression                                                  { 
@@ -500,7 +514,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s / %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Operacao '/' requer inteiros."); $$.type = DT_ERROR;}
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Operacao '/' requer inteiros."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
                                                                                                             add_reduce_trace("expression -> expression / expression");
                                                                                                         }
                         | expression TK_MOD expression                                                  { 
@@ -509,7 +527,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s % %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Operacao '%' requer inteiros."); $$.type = DT_ERROR;}
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Operacao '%' requer inteiros.");
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
                                                                                                             add_reduce_trace("expression -> expression % expression");
                                                                                                         }
 
@@ -520,7 +542,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = -%s", $$.addr, $2.addr); 
                                                                                                             } 
-                                                                                                             else { yyerror("Semantic Error: Operador unário '-' requer tipo inteiro."); $$.type = DT_ERROR; }
+                                                                                                             else { 
+                                                                                                                yyerror("Semantic Error: Operador unário '-' requer tipo inteiro."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                             }
                                                                                                             add_reduce_trace("expression -> - expression (Unary)");
                                                                                                         }
 
@@ -531,7 +557,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s == %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Tipos incompativeis na comparacaoo '=='."); $$.type = DT_ERROR; }
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Tipos incompativeis na comparacaoo '=='."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
                                                                                                             add_reduce_trace("expression -> expression == expression");
                                                                                                         }
                         | expression TK_NE expression                                                   { 
@@ -540,7 +570,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s != %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Tipos incompativeis na comparacaoo '!='."); $$.type = DT_ERROR; }
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Tipos incompativeis na comparacaoo '!='."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR"; 
+                                                                                                            }
                                                                                                             add_reduce_trace("expression -> expression != expression");
                                                                                                         }
                         | expression TK_LT expression                                                   { 
@@ -549,7 +583,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s < %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Comparação '<' requer inteiros."); $$.type = DT_ERROR;}
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Comparação '<' requer inteiros."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
                                                                                                             add_reduce_trace("expression -> expression < expression");
                                                                                                         }
                         | expression TK_LE expression                                                   { 
@@ -558,7 +596,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s <= %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Comparação '<=' requer inteiros."); $$.type = DT_ERROR;}
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Comparação '<=' requer inteiros."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
                                                                                                             add_reduce_trace("expression -> expression <= expression");
                                                                                                         }
                         | expression TK_GT expression                                                   { 
@@ -567,7 +609,11 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s > %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Comparação '>' requer inteiros."); $$.type = DT_ERROR;}
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Comparação '>' requer inteiros."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
                                                                                                             add_reduce_trace("expression -> expression > expression");
                                                                                                         }
                         | expression TK_GE expression                                                   { 
@@ -576,81 +622,97 @@ expression:             TK_INTEGER                                              
                                                                                                                 $$.addr = newTemp();
                                                                                                                 emit("%s = %s >= %s", $$.addr, $1.addr, $3.addr); 
                                                                                                             }
-                                                                                                            else { yyerror("Semantic Error: Comparação '>=' requer inteiros."); $$.type = DT_ERROR;}
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Comparação '>=' requer inteiros."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
                                                                                                             add_reduce_trace("expression -> expression >= expression");
                                                                                                         }
 
                         /* Expressões Lógicas com Curto-Circuito */
-                        | expression TK_LOGICAL_AND {
-                                                                /* Ponto médio 1: Após avaliar o lado esquerdo (A) */
-                                                                char *L_false = newLabel();
-                                                                /* Se A for falso, pula tudo e define o resultado como false */
-                                                                emit("ifFalse %s goto %s", $1.addr, L_false);
-                                                                
-                                                                /* Passamos os labels para a próxima parte via pilha ($<sval>$) ou struct */
-                                                                $<sval>$ = L_false; // Guarda L_false
-                                                            } expression                                    {
-                                                                /* Ponto final: Avaliou o lado direito (B) */
-                                                                /* Recupera o label L_false guardado na ação média */
-                                                                char *L_false = $<sval>3; 
-                                                                char *L_end = newLabel(); 
-                                                                
-                                                                $$.type = DT_BOOL;
-                                                                $$.addr = newTemp(); // Temporário para o resultado
-                                                                
-                                                                /* Se chegou aqui, A é verdadeiro. O resultado depende de B. */
-                                                                emit("%s = %s", $$.addr, $4.addr);
-                                                                emit("goto %s", L_end);
-                                                                
-                                                                emitLabel(L_false);
-                                                                emit("%s = false", $$.addr);
-                                                                
-                                                                emitLabel(L_end);
-                                                                
-                                                                /* Verificação Semântica */
-                                                                if ($1.type == DT_BOOL && $4.type == DT_BOOL) $$.type = DT_BOOL;
-                                                                else { yyerror("Semantic Error: Operacao '&&' requer booleanos."); $$.type = DT_ERROR; }
-                                                                
-                                                                add_reduce_trace("expression -> expression && expression");
-                                                            }
+                        | expression TK_LOGICAL_AND     {
+                                                            /* Ponto médio 1: Após avaliar o lado esquerdo (A) */
+                                                            char *L_false = newLabel();
+                                                            /* Se A for falso, pula tudo e define o resultado como false */
+                                                            emit("ifFalse %s goto %s", $1.addr, L_false);
+                                                            
+                                                            /* Passamos os labels para a próxima parte via pilha ($<sval>$) ou struct */
+                                                            $<sval>$ = L_false; // Guarda L_false
+                                                        } expression                                    {
+                                                                                                            /* Ponto final: Avaliou o lado direito (B) */
+                                                                                                            /* Recupera o label L_false guardado na ação média */
+                                                                                                            char *L_false = $<sval>3; 
+                                                                                                            char *L_end = newLabel(); 
+                                                                                                            
+                                                                                                            $$.type = DT_BOOL;
+                                                                                                            $$.addr = newTemp(); // Temporário para o resultado
+                                                                                                            
+                                                                                                            /* Se chegou aqui, A é verdadeiro. O resultado depende de B. */
+                                                                                                            emit("%s = %s", $$.addr, $4.addr);
+                                                                                                            emit("goto %s", L_end);
+                                                                                                            
+                                                                                                            emitLabel(L_false);
+                                                                                                            emit("%s = false", $$.addr);
+                                                                                                            
+                                                                                                            emitLabel(L_end);
+                                                                                                            
+                                                                                                            /* Verificação Semântica */
+                                                                                                            if ($1.type == DT_BOOL && $4.type == DT_BOOL) $$.type = DT_BOOL;
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Operacao '&&' requer booleanos."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
+                                                                                                            
+                                                                                                            add_reduce_trace("expression -> expression && expression");
+                                                                                                        }
 
                         | expression TK_LOGICAL_OR  {
-                                                                /* Ponto médio 1: Após avaliar o lado esquerdo (A) */
-                                                                char *L_true = newLabel();
-                                                                /* Se A for verdadeiro, pula e define como true (curto-circuito) */
-                                                                /* Nota: Assumindo que temos ifTrue no codegen ou simulamos */
-                                                                /* Simulação: ifFalse A goto CHECK_B; goto L_TRUE; CHECK_B: */
-                                                                /* Mas para simplificar, se nao tiver ifTrue, usamos ifFalse invertido na lógica ou adicionamos no codegen.c */
-                                                                /* Vamos assumir ifTrue ou emit("if %s goto %s", ...) */
-                                                                emit("ifTrue %s goto %s", $1.addr, L_true); 
-                                                                $<sval>$ = L_true; 
-                                                            } expression                                    {
-                                                                /* Ponto final: Avaliou o lado direito (B) */
-                                                                char *L_true = $<sval>3;
-                                                                char *L_end = newLabel();
-                                                                
-                                                                $$.type = DT_BOOL;
-                                                                $$.addr = newTemp();
-                                                                
-                                                                /* Se chegou aqui, A é falso. O resultado é B. */
-                                                                emit("%s = %s", $$.addr, $4.addr);
-                                                                emit("goto %s", L_end);
-                                                                
-                                                                emitLabel(L_true);
-                                                                emit("%s = true", $$.addr);
-                                                                
-                                                                emitLabel(L_end);
-                                                                
-                                                                /* Verificação Semântica */
-                                                                if ($1.type == DT_BOOL && $4.type == DT_BOOL) $$.type = DT_BOOL;
-                                                                else { yyerror("Semantic Error: Operacao '||' requer booleanos."); $$.type = DT_ERROR; }
-                                                                
-                                                                add_reduce_trace("expression -> expression || expression");
-                                                            }
+                                                        /* Ponto médio 1: Após avaliar o lado esquerdo (A) */
+                                                        char *L_true = newLabel();
+                                                        /* Se A for verdadeiro, pula e define como true (curto-circuito) */
+                                                        /* Nota: Assumindo que temos ifTrue no codegen ou simulamos */
+                                                        /* Simulação: ifFalse A goto CHECK_B; goto L_TRUE; CHECK_B: */
+                                                        /* Mas para simplificar, se nao tiver ifTrue, usamos ifFalse invertido na lógica ou adicionamos no codegen.c */
+                                                        /* Vamos assumir ifTrue ou emit("if %s goto %s", ...) */
+                                                        emit("ifTrue %s goto %s", $1.addr, L_true); 
+                                                        $<sval>$ = L_true; 
+                                                    } expression                                        {
+                                                                                                            /* Ponto final: Avaliou o lado direito (B) */
+                                                                                                            char *L_true = $<sval>3;
+                                                                                                            char *L_end = newLabel();
+                                                                                                            
+                                                                                                            $$.type = DT_BOOL;
+                                                                                                            $$.addr = newTemp();
+                                                                                                            
+                                                                                                            /* Se chegou aqui, A é falso. O resultado é B. */
+                                                                                                            emit("%s = %s", $$.addr, $4.addr);
+                                                                                                            emit("goto %s", L_end);
+                                                                                                            
+                                                                                                            emitLabel(L_true);
+                                                                                                            emit("%s = true", $$.addr);
+                                                                                                            
+                                                                                                            emitLabel(L_end);
+                                                                                                            
+                                                                                                            /* Verificação Semântica */
+                                                                                                            if ($1.type == DT_BOOL && $4.type == DT_BOOL) $$.type = DT_BOOL;
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Operacao '||' requer booleanos."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
+                                                                                                            
+                                                                                                            add_reduce_trace("expression -> expression || expression");
+                                                                                                        }
 
                         | TK_LOGICAL_NOT expression                                                     {
                                                                                                             if ($2.type == DT_BOOL) $$.type = DT_BOOL;
-                                                                                                            else { yyerror("Semantic Error: Operacao '!' requer booleanos."); $$.type = DT_ERROR; }
+                                                                                                            else { 
+                                                                                                                yyerror("Semantic Error: Operacao '!' requer booleanos."); 
+                                                                                                                $$.type = DT_ERROR;
+                                                                                                                $$.addr = "ERR";
+                                                                                                            }
                                                                                                             $$.addr = newTemp();
                                                                                                             emit("%s = !%s", $$.addr, $2.addr);
                                                                                                             add_reduce_trace("expression -> ! expression");
