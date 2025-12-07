@@ -87,7 +87,7 @@ NEWLINE     \n
 "{"             { print_token(TK_LBRACE, yytext); column_num += yyleng; return TK_LBRACE; }
 "}"             { print_token(TK_RBRACE, yytext); column_num += yyleng; return TK_RBRACE; }
 
-{INTEGER}       { print_token(TK_INTEGER, yytext); column_num += yyleng; return TK_INTEGER; }
+{INTEGER}       { print_token(TK_INTEGER, yytext); yylval.ival = atoi(yytext); column_num += yyleng; return TK_INTEGER; }
 
 
 -?{DIGIT}+({LETTER}|_)+({LETTER}|{DIGIT}|_)* {
