@@ -8,6 +8,9 @@ TARGET = src/compilador
 LEX_SRC = src/scanner.l
 YACC_SRC = src/parser.y
 
+# Arquivos fonte C auxiliares (codegen, tabela de simbolos se estiver separada, etc)
+C_SRCS = src/codegen.c 
+
 # --- Arquivos Gerados ---
 LEX_GEN_C = src/lex.yy.c
 YACC_GEN_C = src/parser.tab.c
@@ -25,9 +28,9 @@ GRAPHVIZ_FLAGS = -Goverlap=scale -Granksep=1.5 -Gnodesep=0.5 -Gsplines=true
 all: $(TARGET)
 
 # Regra para criar o executável final
-$(TARGET): $(LEX_GEN_C) $(YACC_GEN_C)
+$(TARGET): $(LEX_GEN_C) $(YACC_GEN_C) $(C_SRCS)
 	@echo "Linkando o executável final..."
-	$(CC) $(CFLAGS) $(LEX_GEN_C) $(YACC_GEN_C) -o $(TARGET)
+	$(CC) $(CFLAGS) $(LEX_GEN_C) $(YACC_GEN_C) $(C_SRCS) -o $(TARGET)
 	@echo "Compilador '$(TARGET)' criado com sucesso!"
 
 # Regra para gerar o parser (Bison) - Ainda gera o .dot e .output

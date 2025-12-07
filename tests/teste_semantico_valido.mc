@@ -25,3 +25,5 @@ if (!b || x != 10) {
         x = true;   // Atribuição na variável local (bool)
     }
 }
+
+print(y);
