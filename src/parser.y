@@ -554,58 +554,82 @@ expression:
         }
         add_reduce_trace("expr -> >=");
     }
-
-    /* Lógica (Com Curto-Circuito) */
+/* Lógica E (AND) com Curto-Circuito Explícito */
     | expression TK_LOGICAL_AND {
+        /* Ação de Meio de Regra: Avaliou o primeiro operando (A) */
         char *L_false = newLabel();
+        
+        /* Se A for Falso, já sabemos o resultado: pula tudo para definir como false */
         emit("ifFalse %s goto %s", $1.addr, L_false);
-        $<sval>$ = L_false; /* Passa label para a próxima etapa */
+        
+        /* Passa o label L_false para a parte final */
+        $<sval>$ = L_false; 
     } expression {
+        /* Parte Final: Avaliou o segundo operando (B) */
         char *L_false = $<sval>3; 
         char *L_end = newLabel(); 
         
         $$.type = DT_BOOL;
-        $$.addr = newTemp();
+        $$.addr = newTemp(); // Temporário para o resultado final
         
-        /* Caso True (A e B são true) */
-        emit("%s = %s", $$.addr, $4.addr);
+        /* Neste ponto, A é com certeza Verdadeiro (senão teria pulado).
+           Agora testamos B. Se B for Falso, também pulamos para L_false. */
+        emit("ifFalse %s goto %s", $4.addr, L_false);
+        
+        /* Se chegou aqui, A é True E B é True. Resultado = True */
+        emit("%s = true", $$.addr);
         emit("goto %s", L_end);
         
-        /* Caso False (A ou B é false) */
+        /* Bloco Falso: Chega aqui se A for False OU se B for False */
         emitLabel(L_false);
         emit("%s = false", $$.addr);
         
+        /* Fim da operação */
         emitLabel(L_end);
         
+        /* Verificação Semântica */
         if ($1.type == DT_BOOL && $4.type == DT_BOOL) $$.type = DT_BOOL;
-        else { yyerror("Semantic Error: '&&' requer booleanos."); $$.type = DT_ERROR; }
+        else { yyerror("Semantic Error: Operacao '&&' requer booleanos."); $$.type = DT_ERROR; }
         
         add_reduce_trace("expr -> &&");
     }
 
+    /* Lógica OU (OR) com Curto-Circuito Explícito */
     | expression TK_LOGICAL_OR {
+        /* Ação de Meio de Regra: Avaliou o primeiro operando (A) */
         char *L_true = newLabel();
+        
+        /* Se A for Verdadeiro, já sabemos o resultado: pula tudo para definir como true */
         emit("ifTrue %s goto %s", $1.addr, L_true); 
+        
+        /* Passa o label L_true para a parte final */
         $<sval>$ = L_true; 
     } expression {
+        /* Parte Final: Avaliou o segundo operando (B) */
         char *L_true = $<sval>3;
         char *L_end = newLabel();
         
         $$.type = DT_BOOL;
         $$.addr = newTemp();
         
-        /* Caso False (A é false, resultado é B) */
-        emit("%s = %s", $$.addr, $4.addr);
+        /* Neste ponto, A é com certeza Falso (senão teria pulado).
+           Agora testamos B. Se B for Verdadeiro, pulamos para L_true. */
+        emit("ifTrue %s goto %s", $4.addr, L_true);
+        
+        /* Se chegou aqui, A é False E B é False. Resultado = False */
+        emit("%s = false", $$.addr);
         emit("goto %s", L_end);
         
-        /* Caso True (A é true) */
+        /* Bloco Verdadeiro: Chega aqui se A for True OU se B for True */
         emitLabel(L_true);
         emit("%s = true", $$.addr);
         
+        /* Fim da operação */
         emitLabel(L_end);
         
+        /* Verificação Semântica */
         if ($1.type == DT_BOOL && $4.type == DT_BOOL) $$.type = DT_BOOL;
-        else { yyerror("Semantic Error: '||' requer booleanos."); $$.type = DT_ERROR; }
+        else { yyerror("Semantic Error: Operacao '||' requer booleanos."); $$.type = DT_ERROR; }
         
         add_reduce_trace("expr -> ||");
     }
