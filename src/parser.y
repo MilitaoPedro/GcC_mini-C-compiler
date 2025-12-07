@@ -3,60 +3,56 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* Inclua o codegen */
 #include "codegen.h"
-
 
 /* Tipos de dados da linguagem */
 #define DT_INTEGER 1
 #define DT_BOOL    2
 #define DT_ERROR  -1
 
-/* Variavel global para armazenar o tipo atual sendo declarado (ex: int a, b, c;) */
+/* Contexto global para declarações (ex: int a, b, c;) */
 int current_declaration_type;
 
 /* ======================== ESTRUTURAS DA TABELA DE SÍMBOLOS ======================== */
 typedef struct symbol {
-    int id;                         /* Identificador único do símbolo */
-    int token_type;                 /* Tipo do token (TK_INT, TK_BOOL, etc) */
-    int data_type;                  /* DT_INTEGER ou DT_BOOL */
-    int scope_depth;                /* Profundidade do escopo (0=global, 1,2,3...=aninhado) */
-    int scope_id;                   /* ID único do escopo onde o símbolo foi declarado */
-    int line;                       /* Linha onde o símbolo foi declarado */
-    int column;                     /* Coluna onde o símbolo foi declarado */
-    char *lexeme;                   /* Nome do símbolo (identificador) */
+    int id;                         /* ID único */
+    int token_type;                 /* TK_INT, TK_BOOL */
+    int data_type;                  /* DT_INTEGER, DT_BOOL */
+    int scope_depth;                /* Profundidade do escopo */
+    int scope_id;                   /* ID do escopo */
+    int line;
+    int column;
+    char *lexeme;
 } Symbol;
 
 typedef struct hash_node {
-    Symbol *symbol;                 /* Ponteiro para o símbolo */
-    struct hash_node *next;         /* Ponteiro para próximo nó (separate chaining) */
+    Symbol *symbol;
+    struct hash_node *next;
 } HashNode;
 
-/* Estrutura de uma tabela de símbolos (escopo) */
 typedef struct scope_table {
-    HashNode *hash_table[997];      /* Hash table para este escopo */
-    int symbol_count;               /* Número de símbolos neste escopo */
-    struct scope_table *parent;     /* Ponteiro para escopo pai (NULL para global) */
-    Symbol **symbol_order;          /* Símbolos em ordem de inserção */
-    char **symbol_lexeme;           /* Lexemas em ordem de inserção (para impressão) */
-    int capacity;                   /* Capacidade do array */
-    int id;                         /* ID único desta instância de escopo */
+    HashNode *hash_table[997];
+    int symbol_count;
+    struct scope_table *parent;
+    Symbol **symbol_order;          /* Para impressão ordenada */
+    char **symbol_lexeme;
+    int capacity;
+    int id;
 } ScopeTable;
 
-/* Tabela de símbolos global e ponteiro para escopo atual */
+/* Globais da Tabela de Símbolos */
 ScopeTable *global_scope = NULL;
 ScopeTable *current_scope = NULL;
-int global_symbol_count = 0;        /* Contador global de IDs */
-int current_scope_depth = 0;        /* Profundidade atual do escopo */
+int global_symbol_count = 0;
+int current_scope_depth = 0;
 int global_scope_counter = 0;
 
-/* Listas globais para impressão final */
+/* Lista global para relatório final */
 Symbol **all_symbols = NULL;
 int all_symbols_count = 0;
 int all_symbols_capacity = 0;
 
-/* Definições de cores ANSI */
+/* Cores ANSI */
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
@@ -66,7 +62,7 @@ int all_symbols_capacity = 0;
 #define CYAN    "\033[36m"
 #define BOLD    "\033[1m"
 
-/* ======================== PROTÓTIPOS DE FUNÇÕES ======================== */
+/* Protótipos */
 unsigned int hash_function(const char *lexeme);
 void initialize_symbol_table();
 void enter_scope();
@@ -74,788 +70,645 @@ void exit_scope();
 void insert_symbol(char *lexeme, int token_type, int data_type);
 Symbol* lookup_symbol(char *lexeme);
 void print_symbol_table();
-void collect_all_symbols(ScopeTable *scope);
 const char* token_type_to_string(int type);
 
-/* ======================== PROTÓTIPOS E GLOBAIS DO LEXER ======================== */
-/* Declarações 'extern' informam ao Bison que estas funções/variáveis existem
-   em outro arquivo (gerado pelo Flex, scanner.l) e serão ligadas na compilação. */
-
-extern int yylex();                 // Função principal do analisador léxico (retorna o próximo token).
-extern FILE *yyin;                  // Ponteiro para o arquivo de entrada sendo lido.
-extern int yylineno;                // Variavel global do Flex que armazena o número da linha atual.
-extern int lexic_error_count;       // Contador de erros léxicos (definido no scanner.l).
-extern int column_num;              // Contador de coluna atual (definido no scanner.l).
-
+/* Protótipos Externos (Lexer e Codegen) */
+extern int yylex();
+extern FILE *yyin;
+extern int yylineno;
+extern int lexic_error_count;
+extern int column_num;
 extern void emit_flush();
 
-/* Contador de erros sintáticos (definido neste arquivo). */
 int sintatic_error_count = 0;
 
-/* Protótipo da função que adiciona uma entrada ao trace de redução. */
 void add_reduce_trace(const char *rule);
-
-/* Definições de cores ANSI para formatação da saída no terminal. */
-#define RESET   "\033[0m"
-#define RED     "\033[31m"
-#define GREEN   "\033[32m"
-#define YELLOW  "\033[33m"
-#define BLUE    "\033[34m"
-#define MAGENTA "\033[35m"
-#define CYAN    "\033[36m"
-#define BOLD    "\033[1m"
-
-/* A função de erro que o Bison vai chamar automaticamente ao detectar um erro sintático. */
 void yyerror(const char *s);
-
-/* Variavel global para armazenar a string completa do trace de parsing (Shift/Reduce/Erro). */
-char g_full_trace[65536] = "AÇÃO\tDETALHE\n"; // Buffer inicializado com o cabeçalho.
+char g_full_trace[65536] = "AÇÃO\tDETALHE\n";
 
 %}
 
-/* Nova estrutura para atributos de expressão */
 %code requires {
+    /* Estrutura para atributos sintetizados de expressões */
     typedef struct {
-        int type;       // DT_INTEGER ou DT_BOOL (para semântica)
-        char *addr;     // "t1", "x", "10" (para geração de código)
+        int type;       /* Tipo semântico (DT_INTEGER, DT_BOOL) */
+        char *addr;     /* Endereço no Código Intermediário (t1, x, 10) */
     } ExprInfo;
 }
 
 %union {
-    int ival;       /* Para valores inteiros e tipos (DT_INTEGER, etc) */
-    char *sval;     /* Para o nome dos identificadores (lexema) */
-    ExprInfo expr_val;  /* Para expressões com tipo E endereço */
+    int ival;           /* Valores inteiros e tipos */
+    char *sval;         /* Lexemas e Labels */
+    ExprInfo expr_val;  /* Atributos de expressão */
 }
-/* ------------------------------ Definição de Tokens ------------------------------ */
-/* Lista todos os tokens terminais que o analisador léxico (yylex) pode retornar.
-   O Bison usa esses nomes para gerar as definições numéricas em parser.tab.h. */
+
+/* ======================== Definição de Tokens ======================== */
 
 %token TK_INT TK_BOOL TK_IF TK_ELSE TK_WHILE TK_PRINT
 %token TK_READ TK_TRUE TK_FALSE
 %token TK_SEMICOLON TK_COMMA TK_LPAREN TK_RPAREN TK_LBRACE TK_RBRACE
 %token <ival> TK_INTEGER 
 %token <sval> TK_ID
-%token TK_EQ TK_NE TK_LE TK_GE TK_LT TK_GT                              // Tokens específicos para operadores relacionais
-%token TK_LOGICAL_AND TK_LOGICAL_OR TK_LOGICAL_NOT                      // Tokens específicos para operadores lógicos
-%token TK_PLUS TK_MINUS TK_MULT TK_DIV TK_MOD                           // Tokens específicos para operadores aritméticos
-%token TK_ASSIGN                                                        // Token específico para atribuição
+%token TK_EQ TK_NE TK_LE TK_GE TK_LT TK_GT
+%token TK_LOGICAL_AND TK_LOGICAL_OR TK_LOGICAL_NOT
+%token TK_PLUS TK_MINUS TK_MULT TK_DIV TK_MOD
+%token TK_ASSIGN
 
-/* Tipos dos nao-terminais que carregam informação de tipo */
+/* Tipos dos não-terminais */
 %type <ival> type
 %type <expr_val> expression
 %type <sval> if_head while_start else_jump if_else_bridge
 
-/* Diretiva para habilitar mensagens de erro mais detalhadas passadas para yyerror. */
+/* Configurações do Bison */
 %define parse.error verbose
-
-/* Define o símbolo inicial da gramática (o nao-terminal raiz). */
 %start program
 
-/* ------------------------------ PRECEDÊNCIA E ASSOCIATIVIDADE DOS OPERADORES ------------------------------ */
-/* Define a ordem e como os operadores se agrupam em expressões. Linhas mais baixas têm MAIOR precedência. */
+/* ======================== Precedência de Operadores ======================== */
+/* Ordem crescente de precedência */
+%left TK_LOGICAL_OR
+%left TK_LOGICAL_AND
+%left TK_EQ TK_NE
+%left TK_LT TK_LE TK_GT TK_GE
+%left TK_PLUS TK_MINUS
+%left TK_MULT TK_DIV TK_MOD
+%right TK_LOGICAL_NOT
+%right UMINUS
 
-%left TK_LOGICAL_OR                 /* || (menor precedência, associa à esquerda) */
-%left TK_LOGICAL_AND                /* && (associa à esquerda) */
-%left TK_EQ TK_NE                   /* == != (associa à esquerda) */
-%left TK_LT TK_LE TK_GT TK_GE       /* < <= > >= (associa à esquerda) */
-%left TK_PLUS TK_MINUS              /* + - binários (associa à esquerda) */
-%left TK_MULT TK_DIV TK_MOD         /* * / % (associa à esquerda) */
-%right TK_LOGICAL_NOT               /* ! unário (associa à direita) */
-%right UMINUS                       /* Pseudo-token para Menos Unário (alta precedência, associa à direita) */
-
-/* ======================================= Seção de Regras (Gramática) ======================================= */
+/* ======================== Gramática ======================== */
 %%
 
-/* Um programa é definido como uma sequência de 'statements'. */
 program:
-                        statements                                                                      { add_reduce_trace("program -> statements");} /* Ação executada ao reconhecer o programa inteiro */
-                        ;
+    statements { add_reduce_trace("program -> statements"); }
+    ;
 
-/* 'statements' representa uma lista de zero ou mais 'statement'. */
 statements:
-                        /* epsilon */                                                                   { add_reduce_trace("statements ->");} /* Regra para lista vazia */
-                        | statements statement                                                          { add_reduce_trace("statements -> statements statement");} /* Regra recursiva: adiciona um statement à lista */
+    /* epsilon */ { add_reduce_trace("statements -> epsilon"); }
+    | statements statement { add_reduce_trace("statements -> statements statement"); }
+    
+    /* Recuperação de Erro (Modo Pânico) */
+    | statements error TK_SEMICOLON { yyerrok; add_reduce_trace("statements -> error ; (Recuperacao)"); }
+    | statements error TK_RBRACE    { add_reduce_trace("statements -> error } (Recuperacao Fim Bloco)"); }
+    ;
 
-                        /* Regras de recuperação de erro em modo pânico: */
-                        | statements error TK_SEMICOLON /* Descarta tokens até encontrar ';' */         { yyerrok; add_reduce_trace("statements -> statements error ; (Recuperacao)"); } /* yyerrok sai do modo erro */
-                        | statements error TK_RBRACE    /* Descarta tokens até encontrar '}' */         { /* nao precisa yyerrok aqui, '}' fecha o contexto */ add_reduce_trace("statements -> statements error } (Recuperacao Fim Bloco)"); }
-                        ;
-
-/* 'statement' define os tipos de comandos individuais permitidos na linguagem.
-   Usa a divisão matched/unmatched para resolver a ambiguidade do 'dangling else'. */
+/* Resolução do Dangling Else via fatoração gramatical (Matched/Unmatched) */
 statement:
-                        matched_statement                                                               { add_reduce_trace("statement -> matched_statement"); } /* Um statement pode ser um 'matched' */
-                        | unmatched_statement                                                           { add_reduce_trace("statement -> unmatched_statement"); } /* Ou um 'unmatched' */
+    matched_statement { add_reduce_trace("statement -> matched"); }
+    | unmatched_statement { add_reduce_trace("statement -> unmatched"); }
     ;
 
-/* MATCHE_STATEMENT: Qualquer comando que está sintaticamente "completo"
-   e nao termina ambiguamente com um IF sem ELSE. */
 matched_statement:
-                        declaration                                                                     { add_reduce_trace("matched_statement -> declaration"); }
-                        | assignment                                                                    { add_reduce_trace("matched_statement -> assignment"); }
-                        | read                                                                          { add_reduce_trace("matched_statement -> read"); }
-                        | print                                                                         { add_reduce_trace("matched_statement -> print"); }
-                        | while_stmt                                                                    { add_reduce_trace("matched_statement -> while_stmt"); }
-
-                        /* Um IF-ELSE completo é um matched_statement SE AMBOS os corpos (then/else)
-                           também forem matched_statements. Isso força o ELSE a se ligar ao IF interno. */
-                        | if_head then_part if_else_bridge then_part  
-                          { 
-                             emitLabel($3); /* Imprime o label L_end retornado pela bridge */
-                             add_reduce_trace("matched_statement -> if_head then_part if_else_bridge then_part"); 
-                          }
-                        ;
-
-/* UNMATCHED_STATEMENT: Um comando que termina em um IF sem ELSE,
-   criando a potencial ambiguidade. */
-unmatched_statement:
-                        /* Um IF sem ELSE. O corpo (then) pode ser qualquer tipo de statement. */
-                        if_head then_part                                                               
-                        { 
-                            emitLabel($1); /* Imprime o label L_false retornado pelo if_head */
-                            add_reduce_trace("unmatched_statement -> if_head then_part"); 
-                        }
-
-                        /* Um IF-ELSE onde a parte ELSE é ela mesma um unmatched_statement. */
-                        | if_head then_part if_else_bridge unmatched_statement                               
-                        { 
-                            exit_scope(); 
-                            emitLabel($3); /* Imprime o label L_end retornado pela bridge */
-                            add_reduce_trace("unmatched_statement -> if_head then_part if_else_bridge unmatched_statement"); 
-                        }
-                        ;
-
-/* 'then' representa o corpo de um comando IF ou WHILE.
-   Pode ser um bloco {} ou um único matched_statement (para evitar ambiguidade). */
-then:                   TK_LBRACE statements TK_RBRACE                                                  { add_reduce_trace("then -> { statements }"); }
-                        | matched_statement                                                             { add_reduce_trace("then -> matched_statement"); }
-                        ;
-
-/* Regra auxiliar para unificar a abertura de escopo do IF */
-if_head: 
-    TK_IF TK_LPAREN expression TK_RPAREN                                                                {
-                                                                                                            enter_scope();
-                                                                                                            char *L_false = newLabel(); // Gera o label SEMPRE para não quebrar a lógica
-        
-                                                                                                            if ($3.type != DT_BOOL) {
-                                                                                                                yyerror("Semantic Error: Condicao do 'if' deve ser booleana.");
-                                                                                                                /* Não emite o ifFalse se deu erro */
-                                                                                                            } else {
-                                                                                                                emit("ifFalse %s goto %s", $3.addr, L_false);
-                                                                                                            }
-                                                                                                            $$ = L_false; // Retorna "L1" para ser usado nas regras pai
-                                                                                                            
-                                                                                                            add_reduce_trace("if_head -> if ( expression )");
-                                                                                                        }
+    declaration { add_reduce_trace("matched -> declaration"); }
+    | assignment { add_reduce_trace("matched -> assignment"); }
+    | read { add_reduce_trace("matched -> read"); }
+    | print { add_reduce_trace("matched -> print"); }
+    | while_stmt { add_reduce_trace("matched -> while"); }
+    
+    /* IF-ELSE completo (ambos os ramos fechados) */
+    | if_head then_part if_else_bridge then_part { 
+        emitLabel($3); /* Label de fim */
+        add_reduce_trace("matched -> if-else"); 
+    }
     ;
 
-/* Geração de label e goto para pular o ELSE (chamado ao final do bloco THEN) */
+unmatched_statement:
+    /* IF sem ELSE */
+    if_head then_part { 
+        emitLabel($1); /* Label de falso */
+        add_reduce_trace("unmatched -> if"); 
+    }
+    
+    /* IF-ELSE incompleto (o else contém um unmatched) */
+    | if_head then_part if_else_bridge unmatched_statement { 
+        exit_scope(); 
+        emitLabel($3); /* Label de fim */
+        add_reduce_trace("unmatched -> if-else-incompleto"); 
+    }
+    ;
+
+then:
+    TK_LBRACE statements TK_RBRACE { add_reduce_trace("then -> block"); }
+    | matched_statement { add_reduce_trace("then -> stmt"); }
+    ;
+
+/* --- Auxiliares de Controle de Fluxo --- */
+
+/* Gera teste condicional do IF e label de falso */
+if_head: 
+    TK_IF TK_LPAREN expression TK_RPAREN {
+        enter_scope();
+        char *L_false = newLabel();
+        
+        if ($3.type != DT_BOOL) {
+            yyerror("Semantic Error: Condicao do 'if' deve ser booleana.");
+        } else {
+            emit("ifFalse %s goto %s", $3.addr, L_false);
+        }
+        $$ = L_false;
+        add_reduce_trace("if_head");
+    }
+    ;
+
+/* Gera salto incondicional para pular o ELSE */
 else_jump: /* epsilon */ {
     $$ = newLabel();
     emit("goto %s", $$);
 };
 
-/* Bridge que unifica a lógica de transição THEN -> ELSE para evitar conflitos Reduce/Reduce */
+/* Ponto de junção IF/ELSE para evitar conflitos de redução */
 if_else_bridge: else_jump {
-    /* MRA: Imprime o label de falso do IF (que está na pilha em if_head) */
-    /* if_head é $-1 em relação a esta posição (antes do else_jump) */
+    /* Imprime o label de falso do IF (guardado na pilha em $-1) */
     emitLabel($<sval>-1); 
 } else_head {
-    /* Propaga o label L_end (de else_jump) para cima */
+    /* Propaga o label de fim para a regra pai */
     $$ = $1;
 };
 
-/* Consome o ELSE e abre o escopo imediatamente */
 else_head: 
-    TK_ELSE                                                                                             { enter_scope(); add_reduce_trace("else_head -> else"); }
+    TK_ELSE { enter_scope(); add_reduce_trace("else_head"); }
     ;
 
-/* Regra auxiliar para consumir o 'then' e fechar o escopo imediatamente */
 then_part:
-    then                                                                                                { exit_scope(); add_reduce_trace("then_part -> then"); }
+    then { exit_scope(); add_reduce_trace("then_part"); }
     ;
 
-/* Regra para declaração de variáveis. */
-declaration:            type id_list TK_SEMICOLON                                                       { add_reduce_trace("declaration -> type id_list TK_SEMICOLON");}
-                        ;
+/* --- Declarações --- */
 
-/* Regra para os tipos de dados permitidos. */
-type:                   TK_INT                                                                          { $$ = DT_INTEGER; current_declaration_type = DT_INTEGER; add_reduce_trace("type -> TK_INT");}
-                        | TK_BOOL                                                                       { $$ = DT_BOOL; current_declaration_type = DT_BOOL;       add_reduce_trace("type -> TK_BOOL");}
-                        ;
+declaration:
+    type id_list TK_SEMICOLON { add_reduce_trace("declaration"); }
+    ;
 
-/* id_list agora é uma lista de 'declarator' */
+type:
+    TK_INT { $$ = DT_INTEGER; current_declaration_type = DT_INTEGER; add_reduce_trace("type -> int"); }
+    | TK_BOOL { $$ = DT_BOOL; current_declaration_type = DT_BOOL; add_reduce_trace("type -> bool"); }
+    ;
+
 id_list:
-                        declarator                                                                      { add_reduce_trace("id_list -> declarator"); }
-                        | id_list TK_COMMA declarator                                                   { add_reduce_trace("id_list -> id_list , declarator"); }
-                        ;
+    declarator { add_reduce_trace("id_list -> declarator"); }
+    | id_list TK_COMMA declarator { add_reduce_trace("id_list -> list, declarator"); }
+    ;
 
-/* 'declarator' pode ser apenas um ID ou um ID com inicialização */
 declarator:
-                        TK_ID                                                                           {
-                                                                                                            /* Verifica se ja existe no escopo ATUAL */
-                                                                                                            Symbol* s = lookup_symbol($1); 
-                                                                                                            
-                                                                                                            if (s != NULL && s->scope_depth == current_scope_depth) {
-                                                                                                                char msg[200];
-                                                                                                                sprintf(msg, "Semantic Error: Variavel '%s' ja declarada neste escopo.", $1);
-                                                                                                                yyerror(msg);
-                                                                                                            } else {
-                                                                                                                /* Insere com o tipo guardado na variavel global */
-                                                                                                                insert_symbol($1, TK_ID, current_declaration_type);
-                                                                                                            }
-                                                                                                            add_reduce_trace("declarator -> TK_ID"); 
-                                                                                                        }
-                        | TK_ID TK_ASSIGN expression                                                    {
-                                                                                                            /* 1. Inserir a variavel */
-                                                                                                            Symbol* s = lookup_symbol($1);
-                                                                                                            if (s != NULL && s->scope_depth == current_scope_depth) {
-                                                                                                                char msg[200]; sprintf(msg, "Semantic Error: Redeclaração de '%s'.", $1); yyerror(msg);
-                                                                                                            } else {
-                                                                                                                insert_symbol($1, TK_ID, current_declaration_type);
-                                                                                                            }
+    TK_ID {
+        /* Apenas declaração */
+        Symbol* s = lookup_symbol($1);
+        if (s != NULL && s->scope_depth == current_scope_depth) {
+            char msg[200]; sprintf(msg, "Semantic Error: Variavel '%s' ja declarada neste escopo.", $1);
+            yyerror(msg);
+        } else {
+            insert_symbol($1, TK_ID, current_declaration_type);
+            s = lookup_symbol($1);
+        }
+        add_reduce_trace("declarator -> id"); 
+    }
+    | TK_ID TK_ASSIGN expression {
+        /* Declaração com inicialização */
+        Symbol* s = lookup_symbol($1);
+        if (s != NULL && s->scope_depth == current_scope_depth) {
+            char msg[200]; sprintf(msg, "Semantic Error: Redeclaração de '%s'.", $1);
+            yyerror(msg);
+        } else {
+            insert_symbol($1, TK_ID, current_declaration_type);
+            s = lookup_symbol($1);
+        }
 
-                                                                                                            /* 2. Verificar tipo da atribuição */
-                                                                                                            if (current_declaration_type != $3.type) {
-                                                                                                                yyerror("Semantic Error: Tipo da expressao incompativel com a variavel na inicializacao.");
-                                                                                                            } else { emit("%s = %s", $1, $3.addr); }
-                                                                                                            add_reduce_trace("declarator -> TK_ID = expression");
-                                                                                                        }
-                        ;
+        if (current_declaration_type != $3.type) {
+            yyerror("Semantic Error: Tipo incompativel na inicializacao.");
+        } else {
+            char unique_target[100];
+            sprintf(unique_target, "%s_%d", s->lexeme, s->scope_id);
+            emit("%s = %s", unique_target, $3.addr);
+        }
+        add_reduce_trace("declarator -> id = expr");
+    }
+    ;
                     
-/* Regra para comando de atribuição. */
-assignment:             TK_ID TK_ASSIGN expression TK_SEMICOLON                                         {
-                                                                                                            Symbol* s = lookup_symbol($1);
-                                                                                                            if (s == NULL) {
-                                                                                                                char msg[200]; sprintf(msg, "Semantic Error: Variavel '%s' nao declarada.", $1);
-                                                                                                                yyerror(msg);
-                                                                                                            } else {
-                                                                                                                if (s->data_type != $3.type && $3.type != DT_ERROR) {
-                                                                                                                    yyerror("Semantic Error: Atribuicao com tipos incompativeis.");
-                                                                                                                } else { emit("%s = %s", $1, $3.addr); }
-                                                                                                            }
-                                                                                                            add_reduce_trace("assignment");
-                                                                                                        }
-                        ;
+/* --- Comandos --- */
 
-/* Regra para comando de leitura. */
-read:                   TK_READ TK_LPAREN TK_ID TK_RPAREN TK_SEMICOLON                                  {
-                                                                                                            /* 1. Verificação Semântica: A variável deve existir */
-                                                                                                            Symbol* s = lookup_symbol($3); // $3 é o lexema do ID
-                                                                                                            if (s == NULL) {
-                                                                                                                char msg[200];
-                                                                                                                sprintf(msg, "Semantic Error: Variavel '%s' nao declarada no 'read'.", $3);
-                                                                                                                yyerror(msg);
-                                                                                                            } else {
-                                                                                                                /* 2. Geração de Código: read x */
-                                                                                                                /* Assume-se que 'read' lê do stdin para a variável */
-                                                                                                                emit("read %s", $3);
-                                                                                                            }
-                                            
-                                                                                                            add_reduce_trace("read -> TK_READ ( TK_ID ) TK_SEMICOLON");
-                                                                                                        }
+assignment:
+    TK_ID TK_ASSIGN expression TK_SEMICOLON {
+        Symbol* s = lookup_symbol($1);
+        if (s == NULL) {
+            char msg[200]; sprintf(msg, "Semantic Error: Variavel '%s' nao declarada.", $1);
+            yyerror(msg);
+        } else {
+            if (s->data_type != $3.type && $3.type != DT_ERROR) {
+                yyerror("Semantic Error: Atribuicao com tipos incompativeis.");
+            } else {
+                char unique_target[100];
+                sprintf(unique_target, "%s_%d", s->lexeme, s->scope_id);
+                emit("%s = %s", unique_target, $3.addr);
+            }
+        }
+        add_reduce_trace("assignment");
+    }
     ;
 
-/* Regra para comando de impressão. */
-print:  TK_PRINT TK_LPAREN expression TK_RPAREN TK_SEMICOLON                                            {
-                                                                                                            /* 1. Verificação Semântica: Opcional (se só pode imprimir tipos básicos) */
-                                                                                                            /* A expressão já calculou seu tipo e endereço em $3 */
-                                                                                                            
-                                                                                                            /* 2. Geração de Código: print t1 */
-                                                                                                            /* Só gera código se a expressão for válida */
-                                                                                                            if ($3.type != DT_ERROR) {
-                                                                                                                emit("print %s", $3.addr);
-                                                                                                            }
-                                                                                                            
-                                                                                                            add_reduce_trace("print -> TK_PRINT ( expression ) TK_SEMICOLON");
-                                                                                                        }
+read:
+    TK_READ TK_LPAREN TK_ID TK_RPAREN TK_SEMICOLON {
+        Symbol* s = lookup_symbol($3);
+        if (s == NULL) {
+            char msg[200]; sprintf(msg, "Semantic Error: Variavel '%s' nao declarada no 'read'.", $3);
+            yyerror(msg);
+        } else {
+            char unique_name[100];
+            sprintf(unique_name, "%s_%d", s->lexeme, s->scope_id);
+            emit("read %s", unique_name);
+        }
+        add_reduce_trace("read");
+    }
     ;
 
-/* WHILE START: Marca o início do loop (antes da condição) */
-while_start:            TK_WHILE                                                                        {
-                                                                                                            char *L_start = newLabel();
-                                                                                                            emitLabel(L_start); // Imprime "L2:"
-                                                                                                            $$ = L_start;       // Retorna "L2"
-                                                                                                        }
-                        ;
+print:
+    TK_PRINT TK_LPAREN expression TK_RPAREN TK_SEMICOLON {
+        if ($3.type != DT_ERROR) {
+            emit("print %s", $3.addr);
+        }
+        add_reduce_trace("print");
+    }
+    ;
 
-/* Regra para o comando 'while'. O corpo deve ser um bloco ou um matched_statement. */
-/* Regra para o comando 'while' CORRIGIDA */
-while_stmt:             while_start TK_LPAREN expression TK_RPAREN  { 
-                                                                        /* --- AÇÃO DE MEIO DE REGRA (Executa ANTES do corpo) --- */
-                                                                        
-                                                                        /* 1. Verificação Semântica */
-                                                                        char *L_end = newLabel(); // Gera o label SEMPRE
-        
-                                                                        if ($3.type != DT_BOOL) {
-                                                                            yyerror("Semantic Error: Condicao do 'while' deve ser booleana.");
-                                                                        } else {
-                                                                            /* Só emite o pulo se a condição for válida */
-                                                                            emit("ifFalse %s goto %s", $3.addr, L_end);
-                                                                        }
-                                                                        /* 3. Escopo */
-                                                                        enter_scope(); 
+while_start:
+    TK_WHILE {
+        char *L_start = newLabel();
+        emitLabel(L_start);
+        $$ = L_start;
+    }
+    ;
 
-                                                                        /* 4. Guardar L_end na pilha para usar no final */
-                                                                        $<sval>$ = L_end; 
-                                                                    }  TK_LBRACE statements TK_RBRACE   { 
-                                                                                                            /* --- AÇÃO FINAL (Executa DEPOIS do corpo) --- */
-                                                                                                            exit_scope(); 
-                                                                                                            
-                                                                                                            char *L_start = $1;      // Recupera L2 (do while_start)
-                                                                                                            char *L_end = $<sval>5;  // Recupera L4 (da ação do meio) -> Note que agora é o índice 5
-                                                                                                            
-                                                                                                            emit("goto %s", L_start); // Volta para testar a condição
-                                                                                                            emitLabel(L_end);         // Define o label de saída (L4)
-                                                                                                            
-                                                                                                            add_reduce_trace("while_stmt -> WHILE ( expr ) { statements }"); 
-                                                                                                        }
-    
-    /* Versão para matched_statement único */
-    | while_start TK_LPAREN expression TK_RPAREN 
-    { 
-        char *L_end = newLabel(); // Gera o label SEMPRE
-        
+while_stmt:
+    /* Loop com bloco */
+    while_start TK_LPAREN expression TK_RPAREN { 
+        /* Ação Média: Teste condicional antes do corpo */
+        char *L_end = newLabel();
         if ($3.type != DT_BOOL) {
             yyerror("Semantic Error: Condicao do 'while' deve ser booleana.");
         } else {
-            /* Só emite o pulo se a condição for válida */
             emit("ifFalse %s goto %s", $3.addr, L_end);
         }
-        
         enter_scope(); 
         $<sval>$ = L_end; 
     } 
-    matched_statement 
-    { 
-        /* --- AÇÃO FINAL --- */
+    TK_LBRACE statements TK_RBRACE { 
         exit_scope(); 
-        
         char *L_start = $1;
         char *L_end = $<sval>5;
-        
         emit("goto %s", L_start);
         emitLabel(L_end);
-        
-        add_reduce_trace("while_stmt -> WHILE ( expr ) matched_statement"); 
+        add_reduce_trace("while (block)"); 
+    }
+    
+    /* Loop com comando único */
+    | while_start TK_LPAREN expression TK_RPAREN { 
+        char *L_end = newLabel();
+        if ($3.type != DT_BOOL) {
+            yyerror("Semantic Error: Condicao do 'while' deve ser booleana.");
+        } else {
+            emit("ifFalse %s goto %s", $3.addr, L_end);
+        }
+        enter_scope(); 
+        $<sval>$ = L_end; 
+    } 
+    matched_statement { 
+        exit_scope(); 
+        char *L_start = $1;
+        char *L_end = $<sval>5;
+        emit("goto %s", L_start);
+        emitLabel(L_end);
+        add_reduce_trace("while (single)"); 
     }
     ;
 
-/* Regra para expressões. Cobre literais, identificadores, parênteses e todas as operações.
-   A precedência e associatividade são resolvidas pelas diretivas %left/%right/%prec. */
-expression:             TK_INTEGER                                                                      {
-                                                                                                            $$.type = DT_INTEGER;
-                                                                                                            char buf[20]; sprintf(buf, "%d", $1);
-                                                                                                            $$.addr = (char*)malloc(20); 
-                                                                                                            sprintf($$.addr, "%d", $1); // O endereço é o próprio número "10"
-                                                                                                            add_reduce_trace("expression -> TK_INTEGER");
-                                                                                                        }
-                        | TK_TRUE                                                                       { $$.type = DT_BOOL; $$.addr = "true"; add_reduce_trace("expression -> TK_TRUE");}
-                        | TK_FALSE                                                                      { $$.type = DT_BOOL; $$.addr = "false"; add_reduce_trace("expression -> TK_FALSE");}
-                        | TK_ID                                                                         {
-                                                                                                            Symbol* s = lookup_symbol($1);
-                                                                                                            if (s == NULL) {
-                                                                                                                char msg[200]; sprintf(msg, "Semantic Error: Variavel '%s' nao declarada.", $1);
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                                yyerror(msg);
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                            } else {
-                                                                                                                $$.type = s->data_type; /* O tipo da expressao é o tipo da variavel */
-                                                                                                                $$.addr = strdup(s->lexeme);
-                                                                                                            }
-                                                                                                            add_reduce_trace("expr -> id");
-                                                                                                        }
-                        | TK_LPAREN expression TK_RPAREN                                                { $$.type = $2.type; $$.addr = $2.addr; add_reduce_trace("expression -> ( expression )");}
+/* --- Expressões --- */
 
-                        /* Expressões Aritméticas */
-                        | expression TK_PLUS expression                                                 {
-                                                                                                            if ($1.type == DT_INTEGER && $3.type == DT_INTEGER){
-                                                                                                                $$.type = DT_INTEGER;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s + %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                    yyerror("Semantic Error: Operacao '+' requer inteiros.");
-                                                                                                                    $$.type = DT_ERROR;
-                                                                                                                    $$.addr = "ERR";
-                                                                                                                }
-                                                                                                            add_reduce_trace("expression -> expression - expression");
-                                                                                                        }
-                        | expression TK_MINUS expression                                                { 
-                                                                                                            if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
-                                                                                                                $$.type = DT_INTEGER;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s - %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Operacao '-' requer inteiros.");
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            add_reduce_trace("expression -> expression - expression");
-                                                                                                        }
-                        | expression TK_MULT expression                                                 { 
-                                                                                                            if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
-                                                                                                                $$.type = DT_INTEGER;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s * %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Operacao '*' requer inteiros."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            add_reduce_trace("expression -> expression * expression");
-                                                                                                        }
-                        | expression TK_DIV expression                                                  { 
-                                                                                                            if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
-                                                                                                                $$.type = DT_INTEGER;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s / %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Operacao '/' requer inteiros."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            add_reduce_trace("expression -> expression / expression");
-                                                                                                        }
-                        | expression TK_MOD expression                                                  { 
-                                                                                                            if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
-                                                                                                                $$.type = DT_INTEGER;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s % %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Operacao '%' requer inteiros.");
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            add_reduce_trace("expression -> expression % expression");
-                                                                                                        }
+expression:
+    TK_INTEGER {
+        $$.type = DT_INTEGER;
+        $$.addr = (char*)malloc(20); 
+        sprintf($$.addr, "%d", $1);
+        add_reduce_trace("expr -> int");
+    }
+    | TK_TRUE { 
+        $$.type = DT_BOOL; 
+        $$.addr = "true"; 
+        add_reduce_trace("expr -> true");
+    }
+    | TK_FALSE { 
+        $$.type = DT_BOOL; 
+        $$.addr = "false"; 
+        add_reduce_trace("expr -> false");
+    }
+    | TK_ID {
+        Symbol* s = lookup_symbol($1);
+        if (s == NULL) {
+            char msg[200]; sprintf(msg, "Semantic Error: Variavel '%s' nao declarada.", $1);
+            yyerror(msg);
+            $$.type = DT_ERROR;
+            $$.addr = "ERR";
+        } else {
+            $$.type = s->data_type;
+            char unique_name[100];
+            sprintf(unique_name, "%s_%d", s->lexeme, s->scope_id); // Ex: x_1
+            $$.addr = strdup(unique_name);
+        }
+        add_reduce_trace("expr -> id");
+    }
+    | TK_LPAREN expression TK_RPAREN { 
+        $$ = $2; 
+        add_reduce_trace("expr -> ( expr )");
+    }
 
-                        /* Menos Unário (usa %prec UMINUS para maior precedência) */
-                        | TK_MINUS expression %prec UMINUS                                              { 
-                                                                                                            if ($2.type == DT_INTEGER) {
-                                                                                                                $$.type = DT_INTEGER;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = -%s", $$.addr, $2.addr); 
-                                                                                                            } 
-                                                                                                             else { 
-                                                                                                                yyerror("Semantic Error: Operador unário '-' requer tipo inteiro."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                             }
-                                                                                                            add_reduce_trace("expression -> - expression (Unary)");
-                                                                                                        }
+    /* Aritmética */
+    | expression TK_PLUS expression {
+        if ($1.type == DT_INTEGER && $3.type == DT_INTEGER){
+            $$.type = DT_INTEGER;
+            $$.addr = newTemp();
+            emit("%s = %s + %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: Operacao '+' requer inteiros."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> +");
+    }
+    | expression TK_MINUS expression { 
+        if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
+            $$.type = DT_INTEGER;
+            $$.addr = newTemp();
+            emit("%s = %s - %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: Operacao '-' requer inteiros."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> -");
+    }
+    | expression TK_MULT expression { 
+        if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
+            $$.type = DT_INTEGER;
+            $$.addr = newTemp();
+            emit("%s = %s * %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: Operacao '*' requer inteiros."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> *");
+    }
+    | expression TK_DIV expression { 
+        if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
+            $$.type = DT_INTEGER;
+            $$.addr = newTemp();
+            emit("%s = %s / %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: Operacao '/' requer inteiros."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> /");
+    }
+    | expression TK_MOD expression { 
+        if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
+            $$.type = DT_INTEGER;
+            $$.addr = newTemp();
+            emit("%s = %s %% %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: Operacao '%%' requer inteiros."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> %");
+    }
 
-                        /* Expressões Relacionais */
-                        | expression TK_EQ expression                                                   {
-                                                                                                            if ($1.type == $3.type && $1.type != DT_ERROR) {
-                                                                                                                $$.type = DT_BOOL;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s == %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Tipos incompativeis na comparacaoo '=='."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            add_reduce_trace("expression -> expression == expression");
-                                                                                                        }
-                        | expression TK_NE expression                                                   { 
-                                                                                                            if ($1.type == $3.type && $1.type != DT_ERROR) {
-                                                                                                                $$.type = DT_BOOL;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s != %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Tipos incompativeis na comparacaoo '!='."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR"; 
-                                                                                                            }
-                                                                                                            add_reduce_trace("expression -> expression != expression");
-                                                                                                        }
-                        | expression TK_LT expression                                                   { 
-                                                                                                            if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
-                                                                                                                $$.type = DT_BOOL;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s < %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Comparação '<' requer inteiros."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            add_reduce_trace("expression -> expression < expression");
-                                                                                                        }
-                        | expression TK_LE expression                                                   { 
-                                                                                                            if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
-                                                                                                                $$.type = DT_BOOL;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s <= %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Comparação '<=' requer inteiros."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            add_reduce_trace("expression -> expression <= expression");
-                                                                                                        }
-                        | expression TK_GT expression                                                   { 
-                                                                                                            if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
-                                                                                                                $$.type = DT_BOOL;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s > %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Comparação '>' requer inteiros."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            add_reduce_trace("expression -> expression > expression");
-                                                                                                        }
-                        | expression TK_GE expression                                                   { 
-                                                                                                            if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
-                                                                                                                $$.type = DT_BOOL;
-                                                                                                                $$.addr = newTemp();
-                                                                                                                emit("%s = %s >= %s", $$.addr, $1.addr, $3.addr); 
-                                                                                                            }
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Comparação '>=' requer inteiros."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            add_reduce_trace("expression -> expression >= expression");
-                                                                                                        }
+    /* Menos Unário */
+    | TK_MINUS expression %prec UMINUS { 
+        if ($2.type == DT_INTEGER) {
+            $$.type = DT_INTEGER;
+            $$.addr = newTemp();
+            emit("%s = -%s", $$.addr, $2.addr); 
+        } else { 
+            yyerror("Semantic Error: Operador unario '-' requer inteiro."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> unary -");
+    }
 
-                        /* Expressões Lógicas com Curto-Circuito */
-                        | expression TK_LOGICAL_AND     {
-                                                            /* Ponto médio 1: Após avaliar o lado esquerdo (A) */
-                                                            char *L_false = newLabel();
-                                                            /* Se A for falso, pula tudo e define o resultado como false */
-                                                            emit("ifFalse %s goto %s", $1.addr, L_false);
-                                                            
-                                                            /* Passamos os labels para a próxima parte via pilha ($<sval>$) ou struct */
-                                                            $<sval>$ = L_false; // Guarda L_false
-                                                        } expression                                    {
-                                                                                                            /* Ponto final: Avaliou o lado direito (B) */
-                                                                                                            /* Recupera o label L_false guardado na ação média */
-                                                                                                            char *L_false = $<sval>3; 
-                                                                                                            char *L_end = newLabel(); 
-                                                                                                            
-                                                                                                            $$.type = DT_BOOL;
-                                                                                                            $$.addr = newTemp(); // Temporário para o resultado
-                                                                                                            
-                                                                                                            /* Se chegou aqui, A é verdadeiro. O resultado depende de B. */
-                                                                                                            emit("%s = %s", $$.addr, $4.addr);
-                                                                                                            emit("goto %s", L_end);
-                                                                                                            
-                                                                                                            emitLabel(L_false);
-                                                                                                            emit("%s = false", $$.addr);
-                                                                                                            
-                                                                                                            emitLabel(L_end);
-                                                                                                            
-                                                                                                            /* Verificação Semântica */
-                                                                                                            if ($1.type == DT_BOOL && $4.type == DT_BOOL) $$.type = DT_BOOL;
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Operacao '&&' requer booleanos."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            
-                                                                                                            add_reduce_trace("expression -> expression && expression");
-                                                                                                        }
+    /* Relacional */
+    | expression TK_EQ expression {
+        if ($1.type == $3.type && $1.type != DT_ERROR) {
+            $$.type = DT_BOOL;
+            $$.addr = newTemp();
+            emit("%s = %s == %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: Tipos incompativeis em '=='."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> ==");
+    }
+    | expression TK_NE expression { 
+        if ($1.type == $3.type && $1.type != DT_ERROR) {
+            $$.type = DT_BOOL;
+            $$.addr = newTemp();
+            emit("%s = %s != %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: Tipos incompativeis em '!='."); 
+            $$.type = DT_ERROR; $$.addr = "ERR"; 
+        }
+        add_reduce_trace("expr -> !=");
+    }
+    | expression TK_LT expression { 
+        if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
+            $$.type = DT_BOOL;
+            $$.addr = newTemp();
+            emit("%s = %s < %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: '<' requer inteiros."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> <");
+    }
+    | expression TK_LE expression { 
+        if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
+            $$.type = DT_BOOL;
+            $$.addr = newTemp();
+            emit("%s = %s <= %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: '<=' requer inteiros."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> <=");
+    }
+    | expression TK_GT expression { 
+        if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
+            $$.type = DT_BOOL;
+            $$.addr = newTemp();
+            emit("%s = %s > %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: '>' requer inteiros."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> >");
+    }
+    | expression TK_GE expression { 
+        if ($1.type == DT_INTEGER && $3.type == DT_INTEGER) {
+            $$.type = DT_BOOL;
+            $$.addr = newTemp();
+            emit("%s = %s >= %s", $$.addr, $1.addr, $3.addr); 
+        } else { 
+            yyerror("Semantic Error: '>=' requer inteiros."); 
+            $$.type = DT_ERROR; $$.addr = "ERR";
+        }
+        add_reduce_trace("expr -> >=");
+    }
 
-                        | expression TK_LOGICAL_OR  {
-                                                        /* Ponto médio 1: Após avaliar o lado esquerdo (A) */
-                                                        char *L_true = newLabel();
-                                                        /* Se A for verdadeiro, pula e define como true (curto-circuito) */
-                                                        /* Nota: Assumindo que temos ifTrue no codegen ou simulamos */
-                                                        /* Simulação: ifFalse A goto CHECK_B; goto L_TRUE; CHECK_B: */
-                                                        /* Mas para simplificar, se nao tiver ifTrue, usamos ifFalse invertido na lógica ou adicionamos no codegen.c */
-                                                        /* Vamos assumir ifTrue ou emit("if %s goto %s", ...) */
-                                                        emit("ifTrue %s goto %s", $1.addr, L_true); 
-                                                        $<sval>$ = L_true; 
-                                                    } expression                                        {
-                                                                                                            /* Ponto final: Avaliou o lado direito (B) */
-                                                                                                            char *L_true = $<sval>3;
-                                                                                                            char *L_end = newLabel();
-                                                                                                            
-                                                                                                            $$.type = DT_BOOL;
-                                                                                                            $$.addr = newTemp();
-                                                                                                            
-                                                                                                            /* Se chegou aqui, A é falso. O resultado é B. */
-                                                                                                            emit("%s = %s", $$.addr, $4.addr);
-                                                                                                            emit("goto %s", L_end);
-                                                                                                            
-                                                                                                            emitLabel(L_true);
-                                                                                                            emit("%s = true", $$.addr);
-                                                                                                            
-                                                                                                            emitLabel(L_end);
-                                                                                                            
-                                                                                                            /* Verificação Semântica */
-                                                                                                            if ($1.type == DT_BOOL && $4.type == DT_BOOL) $$.type = DT_BOOL;
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Operacao '||' requer booleanos."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            
-                                                                                                            add_reduce_trace("expression -> expression || expression");
-                                                                                                        }
+    /* Lógica (Com Curto-Circuito) */
+    | expression TK_LOGICAL_AND {
+        char *L_false = newLabel();
+        emit("ifFalse %s goto %s", $1.addr, L_false);
+        $<sval>$ = L_false; /* Passa label para a próxima etapa */
+    } expression {
+        char *L_false = $<sval>3; 
+        char *L_end = newLabel(); 
+        
+        $$.type = DT_BOOL;
+        $$.addr = newTemp();
+        
+        /* Caso True (A e B são true) */
+        emit("%s = %s", $$.addr, $4.addr);
+        emit("goto %s", L_end);
+        
+        /* Caso False (A ou B é false) */
+        emitLabel(L_false);
+        emit("%s = false", $$.addr);
+        
+        emitLabel(L_end);
+        
+        if ($1.type == DT_BOOL && $4.type == DT_BOOL) $$.type = DT_BOOL;
+        else { yyerror("Semantic Error: '&&' requer booleanos."); $$.type = DT_ERROR; }
+        
+        add_reduce_trace("expr -> &&");
+    }
 
-                        | TK_LOGICAL_NOT expression                                                     {
-                                                                                                            if ($2.type == DT_BOOL) $$.type = DT_BOOL;
-                                                                                                            else { 
-                                                                                                                yyerror("Semantic Error: Operacao '!' requer booleanos."); 
-                                                                                                                $$.type = DT_ERROR;
-                                                                                                                $$.addr = "ERR";
-                                                                                                            }
-                                                                                                            $$.addr = newTemp();
-                                                                                                            emit("%s = !%s", $$.addr, $2.addr);
-                                                                                                            add_reduce_trace("expression -> ! expression");
-                                                                                                        }
-                        ;
+    | expression TK_LOGICAL_OR {
+        char *L_true = newLabel();
+        emit("ifTrue %s goto %s", $1.addr, L_true); 
+        $<sval>$ = L_true; 
+    } expression {
+        char *L_true = $<sval>3;
+        char *L_end = newLabel();
+        
+        $$.type = DT_BOOL;
+        $$.addr = newTemp();
+        
+        /* Caso False (A é false, resultado é B) */
+        emit("%s = %s", $$.addr, $4.addr);
+        emit("goto %s", L_end);
+        
+        /* Caso True (A é true) */
+        emitLabel(L_true);
+        emit("%s = true", $$.addr);
+        
+        emitLabel(L_end);
+        
+        if ($1.type == DT_BOOL && $4.type == DT_BOOL) $$.type = DT_BOOL;
+        else { yyerror("Semantic Error: '||' requer booleanos."); $$.type = DT_ERROR; }
+        
+        add_reduce_trace("expr -> ||");
+    }
+
+    | TK_LOGICAL_NOT expression {
+        if ($2.type == DT_BOOL) $$.type = DT_BOOL;
+        else { yyerror("Semantic Error: '!' requer booleano."); $$.type = DT_ERROR; }
+        
+        $$.addr = newTemp();
+        emit("%s = !%s", $$.addr, $2.addr);
+        add_reduce_trace("expr -> !");
+    }
+    ;
 %%
-/* ======================================= Seção de Código C ======================================= */
 
-/*
-   Esta função é invocada automaticamente pelo parser quando um erro sintático
-   é detectado. Ela formata a mensagem de erro (removendo prefixos genéricos
-   se %define parse.error verbose estiver ativo), adiciona a posição do erro
-   e registra a mensagem na string global g_full_trace para impressão posterior.
-   Também incrementa o contador de erros sintáticos.
- */
+/* ======================== Seção de Código C ======================== */
+
+/* Função de Erro do Bison */
 void yyerror(const char *s) {
-    char temp_str[512]; // Buffer para a linha completa do trace.
-    char error_detail[400]; // Buffer para a mensagem de erro específica.
+    char temp_str[512];
+    char error_detail[400];
 
-    // Tenta trocar o prefixo "syntax error, " para obter a mensagem mais útil.
     if (strncmp(s, "syntax error, ", 14) == 0) {
         snprintf(error_detail, sizeof(error_detail), "Sintatic Error: %s", s + 14);
     } else {
-        snprintf(error_detail, sizeof(error_detail),
-                "%s", s);
+        snprintf(error_detail, sizeof(error_detail), "%s", s);
     }
+    error_detail[sizeof(error_detail) - 1] = '\0';
 
-    error_detail[sizeof(error_detail) - 1] = '\0'; // Garante terminação.
-
-    // Formata a entrada do trace no padrão: "[Lin:Col]\tERRO\tDetalhe do erro\n"
-    sprintf(temp_str, "[%03d:%03d]\tERRO\t%s\n",
-            yylineno,     // Número da linha atual (do lexer).
-            column_num,   // Número da coluna atual (do lexer).
-            error_detail);// Mensagem específica do Bison.
-
-    // Adiciona a linha de erro formatada ao buffer global do trace.
+    sprintf(temp_str, "[%03d:%03d]\tERRO\t%s\n", yylineno, column_num, error_detail);
     strcat(g_full_trace, temp_str);
-    sintatic_error_count++; // Incrementa o contador de erros sintáticos.
+    sintatic_error_count++;
 }
 
-/*
-   Esta função é chamada nas ações de cada regra gramatical. Ela formata
-   a string da regra de redução junto com a posição atual (linha e coluna
-   do último token consumido pela regra) e a anexa à string global g_full_trace.
- */
+/* Rastreamento de Reduções */
 void add_reduce_trace(const char *rule) {
-    char temp_str[256];             // Buffer aumentado para regras mais longas.
-
-    // Formata a entrada do trace: "[Lin:Col]\tREDUCE\tDescrição da Regra\n"
+    char temp_str[256];
     sprintf(temp_str, "[%03d:%03d]\tREDUCE\t%s\n", yylineno, column_num, rule);
-    strcat(g_full_trace, temp_str); // Anexa ao buffer global.
+    strcat(g_full_trace, temp_str);
 }
 
-/*
-   Esta função lê a string global g_full_trace (preenchida durante o parsing),
-   quebra-a em linhas e colunas (usando strtok_r e sscanf), e imprime
-   uma tabela formatada no console com as colunas Posição, Ação e Detalhe.
-   Linhas de erro são destacadas em vermelho.
- */
+/* Impressão da Tabela de Trace */
 void parsing_table(){
-    printf("\n"); // Adiciona um espaço antes da tabela.
-    // Imprime o cabeçalho da tabela com bordas.
+    printf("\n");
     printf("╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
     printf("║                                       " BOLD MAGENTA "ANÁLISE SINTÁTICA E SEMÂNTICA" RESET "                                      ║\n");
     printf("╠═══════════╦═══════════╦══════════════════════════════════════════════════════════════════════════════════╣\n");
     printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD CYAN "  %-9s" RESET " ║ " BOLD GREEN "%-82s" RESET " ║\n", "[Lin:Col]", "AÇÃO", "DETALHE (Token ou Produção)");
     printf("╠═══════════╬═══════════╬══════════════════════════════════════════════════════════════════════════════════╣\n");
 
-    char* saved_ptr; // Ponteiro de contexto para strtok_r.
-    char* trace_copy = strdup(g_full_trace); // Cria uma cópia, pois strtok_r modifica a string.
-    if (!trace_copy) { perror("Falha ao duplicar trace string para parsing_table"); return; }
+    char* saved_ptr;
+    char* trace_copy = strdup(g_full_trace);
+    if (!trace_copy) return;
 
-    char* line = strtok_r(trace_copy, "\n", &saved_ptr); // Primeira chamada (pega o cabeçalho "AÇÃO\tDETALHE").
-    line = strtok_r(NULL, "\n", &saved_ptr); // Segunda chamada (pega a primeira linha real do trace).
+    char* line = strtok_r(trace_copy, "\n", &saved_ptr);
+    line = strtok_r(NULL, "\n", &saved_ptr); // Pula cabeçalho
 
-    // Itera sobre cada linha do trace.
     while (line != NULL) {
         char position[20], action[100], detail[200];
-        // Tenta parsear a linha no formato "POSICAO \t ACAO \t DETALHE".
         if (sscanf(line, "%[^\t]\t%[^\t]\t%[^\n]", position, action, detail) == 3) {
-             // Verifica se a ação é um erro para aplicar a cor vermelha.
              if (strcmp(action, "ERRO") == 0) {
-                 printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD RED "%-9s" RESET " ║ " BOLD RED "%-80s" RESET " ║\n",
-                        position, action, detail);
-             } else { // Imprime linhas normais (SHIFT ou REDUCE).
-                    // printf("║ " BOLD YELLOW "%-9s" RESET " ║ " CYAN "%-9s" RESET " ║ " GREEN "%-80s" RESET " ║\n", position, action, detail);
-             }
-        } else {
-             // Linha mal formatada no trace (nao deve acontecer se add_reduce_trace e yyerror estiverem corretos)
-             fprintf(stderr, "Aviso: Linha mal formatada no trace interno: %s\n", line);
+                 printf("║ " BOLD YELLOW "%-9s" RESET " ║ " BOLD RED "%-9s" RESET " ║ " BOLD RED "%-80s" RESET " ║\n", position, action, detail);
+             } 
+             // Linhas SHIFT/REDUCE omitidas para limpeza, descomente se necessário
         }
-        line = strtok_r(NULL, "\n", &saved_ptr); // Pega a próxima linha.
+        line = strtok_r(NULL, "\n", &saved_ptr);
     }
-    free(trace_copy); // Libera a memória da cópia da string do trace.
+    free(trace_copy);
 
-    // Imprime o rodapé da tabela com o status final.
     printf("╠═══════════╩═══════════╩══════════════════════════════════════════════════════════════════════════════════╣\n");
     if (sintatic_error_count == 0) {
         printf("║ " BOLD GREEN "Análise concluída com sucesso!                                                                           "RESET"║\n");
     } else{
-        // Usa %.3d para garantir 3 dígitos na contagem (ex: 001 erro).
         printf("║ " BOLD RED "Análise concluída com %.3d erro(s).                                                                       "RESET"║\n", sintatic_error_count);
     }
     printf("╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝\n");
 }
 
-/* ======================== IMPLEMENTAÇÃO DA TABELA DE SÍMBOLOS ======================== */
+/* ======================== TABELA DE SÍMBOLOS ======================== */
 
-/* Função hash DJB2 */
 unsigned int hash_function(const char *lexeme) {
     unsigned int hash = 5381;
     int c;
-    while ((c = *lexeme++)) {
-        hash = ((hash << 5) + hash) + c;
-    }
+    while ((c = *lexeme++)) hash = ((hash << 5) + hash) + c;
     return hash % 997;
 }
 
-/* Inicializar tabela de símbolos global */
 void initialize_symbol_table() {
     global_scope = (ScopeTable *)malloc(sizeof(ScopeTable));
     memset(global_scope, 0, sizeof(ScopeTable));
-
     global_scope->id = global_scope_counter++;
-    global_scope->parent = NULL;
-
     current_scope = global_scope;
-    current_scope_depth = 0;
 }
 
-/* Entrar em novo escopo (criar nova tabela de símbolos filha) */
 void enter_scope() {
     ScopeTable *new_scope = (ScopeTable *)malloc(sizeof(ScopeTable));
     memset(new_scope, 0, sizeof(ScopeTable));
-
     new_scope->id = global_scope_counter++;
     new_scope->parent = current_scope;
-
     current_scope = new_scope;
     current_scope_depth++;
 }
 
-/* Sair do escopo atual (voltar ao escopo pai) */
 void exit_scope() {
     if (current_scope->parent != NULL) {
         current_scope = current_scope->parent;
@@ -863,10 +716,10 @@ void exit_scope() {
     }
 }
 
-/* Inserir símbolo no escopo atual */
 void insert_symbol(char *lexeme, int token_type, int data_type) {
+    /* Insere sempre no escopo atual. A verificação de redeclaração ilegal
+       deve ser feita pelo parser antes de chamar esta função. */
     
-    /* Criar novo símbolo com id, type e scope_depth */
     Symbol *new_symbol = (Symbol *)malloc(sizeof(Symbol));
     new_symbol->id = ++global_symbol_count;
     new_symbol->token_type = token_type;
@@ -874,173 +727,88 @@ void insert_symbol(char *lexeme, int token_type, int data_type) {
     new_symbol->scope_depth = current_scope_depth;
     new_symbol->lexeme = strdup(lexeme);
     new_symbol->scope_id = current_scope->id;
-    new_symbol->line = yylineno;         
+    new_symbol->line = yylineno;
     new_symbol->column = column_num;
 
-    /* Calcular índice de hash */
     unsigned int idx = hash_function(lexeme);
-
-    /* Criar novo nó e inserir no escopo atual */
     HashNode *new_node = (HashNode *)malloc(sizeof(HashNode));
     new_node->symbol = new_symbol;
     new_node->next = current_scope->hash_table[idx];
     current_scope->hash_table[idx] = new_node;
 
-    /* Manter ordem de inserção para impressão neste escopo */
+    /* Controle para impressão sequencial */
     if (current_scope->symbol_count >= current_scope->capacity) {
         current_scope->capacity = (current_scope->capacity == 0) ? 10 : current_scope->capacity * 2;
         current_scope->symbol_order = (Symbol **)realloc(current_scope->symbol_order, current_scope->capacity * sizeof(Symbol *));
-        current_scope->symbol_lexeme = (char **)realloc(current_scope->symbol_lexeme, current_scope->capacity * sizeof(char *));
     }
-    current_scope->symbol_order[current_scope->symbol_count] = new_symbol;
-    current_scope->symbol_lexeme[current_scope->symbol_count] = new_symbol->lexeme;
-    current_scope->symbol_count++;
+    current_scope->symbol_order[current_scope->symbol_count++] = new_symbol;
 
-    /* Adicionar à lista global */
+    /* Lista Global */
     if (all_symbols_count >= all_symbols_capacity) {
         all_symbols_capacity = (all_symbols_capacity == 0) ? 20 : all_symbols_capacity * 2;
         all_symbols = (Symbol **)realloc(all_symbols, all_symbols_capacity * sizeof(Symbol *));
     }
-    all_symbols[all_symbols_count] = new_symbol;
-    all_symbols_count++;
+    all_symbols[all_symbols_count++] = new_symbol;
 }
 
-/* Buscar símbolo na árvore de escopos (começa no escopo atual e sobe para o pai) */
 Symbol* lookup_symbol(char *lexeme) {
     ScopeTable *scope = current_scope;
-
     while (scope != NULL) {
         unsigned int idx = hash_function(lexeme);
         HashNode *node = scope->hash_table[idx];
-
         while (node != NULL) {
-            if (strcmp(node->symbol->lexeme, lexeme) == 0) {
-                return node->symbol;
-            }
+            if (strcmp(node->symbol->lexeme, lexeme) == 0) return node->symbol;
             node = node->next;
         }
-        scope = scope->parent; /* Busca no escopo pai */
+        scope = scope->parent;
     }
     return NULL;
 }
 
-/* Converter token_type (int) em string para impressão */
 const char* token_type_to_string(int type) {
     switch (type) {
-
         case DT_INTEGER: return "INTEGER";
         case DT_BOOL: return "BOOL";
-        case DT_ERROR: return "DT_ERROR";
-
-        /* Palavras-chave e Tipos */
-        case TK_INT: return "TK_INT";
-        case TK_BOOL: return "TK_BOOL";
-        case TK_IF: return "TK_IF";
-        case TK_ELSE: return "TK_ELSE";
-        case TK_WHILE: return "TK_WHILE";
-        case TK_PRINT: return "TK_PRINT";
-        case TK_READ: return "TK_READ";
-        case TK_TRUE: return "TK_TRUE";
-        case TK_FALSE: return "TK_FALSE";
-
-        /* Pontuação */
-        case TK_SEMICOLON: return "TK_SEMICOLON";
-        case TK_COMMA: return "TK_COMMA";
-        case TK_LPAREN: return "TK_LPAREN";
-        case TK_RPAREN: return "TK_RPAREN";
-        case TK_LBRACE: return "TK_LBRACE";
-        case TK_RBRACE: return "TK_RBRACE";
-
-        /* Literais */
-        case TK_INTEGER: return "TK_INTEGER";
-        case TK_ID: return "TK_ID";
-
-        /* Operadores Relacionais */
-        case TK_EQ: return "TK_EQ";
-        case TK_NE: return "TK_NE";
-        case TK_LE: return "TK_LE";
-        case TK_GE: return "TK_GE";
-        case TK_LT: return "TK_LT";
-        case TK_GT: return "TK_GT";
-
-        /* Operadores Lógicos */
-        case TK_LOGICAL_AND: return "TK_LOGICAL_AND";
-        case TK_LOGICAL_OR: return "TK_LOGICAL_OR";
-        case TK_LOGICAL_NOT: return "TK_LOGICAL_NOT";
-
-        /* Aritméticos */
-        case TK_PLUS: return "TK_PLUS";
-        case TK_MINUS: return "TK_MINUS";
-        case TK_MULT: return "TK_MULT";
-        case TK_DIV: return "TK_DIV";
-        case TK_MOD: return "TK_MOD";
-
-        /* Atribuição */
-        case TK_ASSIGN: return "TK_ASSIGN";
-
-        /* Operador Unário */
-        case UMINUS: return "UMINUS";
-
-        default:
-            return "UNKNOWN_TOKEN";
+        case DT_ERROR: return "ERROR";
+        case TK_ID: return "ID";
+        default: return "TOKEN";
     }
 }
 
-/* Imprimir tabela de símbolos */
 void print_symbol_table() {
     printf("╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
     printf("║                                            " BOLD MAGENTA "TABELA DE SÍMBOLOS" RESET"                                            ║\n");
     printf("╠═══════╦═══════════╦══════════════════════════════╦═════════════════╦═════════════════╦═════════╦═════════╣\n");
-    printf("║ " BOLD BLUE "%-5s" RESET " ║ " BOLD YELLOW "%-5s" RESET " ║ " BOLD CYAN "%-28s" RESET " ║ " BOLD GREEN "%-15s" RESET " ║ " BOLD GREEN "%-15s" RESET " ║ " BOLD MAGENTA "%-7s" RESET " ║ " BOLD BLUE "%-7s" RESET " ║\n", "[ID]", "[Lin:Col]", "LEXEMA", "TOKEN",  "TIPO", "DEPTH", "ESCOPO");
+    printf("║ " BOLD BLUE "%-5s" RESET " ║ " BOLD YELLOW "%-5s" RESET " ║ " BOLD CYAN "%-28s" RESET " ║ " BOLD GREEN "%-15s" RESET " ║ " BOLD GREEN "%-15s" RESET " ║ " BOLD MAGENTA "%-7s" RESET " ║ " BOLD BLUE "%-7s" RESET " ║\n", "[ID]", "[Lin:Col]", "LEXEMA", "TOKEN",  "TIPO", "DEPTH", "SCOPE");
     printf("╠═══════╬═══════════╬══════════════════════════════╬═════════════════╬═════════════════╬═════════╬═════════╣\n");
 
-    /* Usar lista global de símbolos mantendo ordem de inserção */
     for (int i = 0; i < all_symbols_count; i++) {
         printf("║ " BOLD BLUE "[%03d]" RESET " ║ " BOLD YELLOW "[%03d:%03d]" RESET " ║ " BOLD CYAN "%-28s" RESET " ║ " BOLD GREEN "%-15s" RESET " ║ " BOLD GREEN "%-15s" RESET " ║ " BOLD MAGENTA "%-7d" RESET " ║ " BOLD BLUE "%-7d" RESET " ║\n",
-                all_symbols[i]->id,
-                all_symbols[i]->line,
-                all_symbols[i]->column,
-                all_symbols[i]->lexeme,
+                all_symbols[i]->id, all_symbols[i]->line, all_symbols[i]->column, all_symbols[i]->lexeme,
                 token_type_to_string(all_symbols[i]->token_type),
                 token_type_to_string(all_symbols[i]->data_type),
-                all_symbols[i]->scope_depth,
-                all_symbols[i]->scope_id);
+                all_symbols[i]->scope_depth, all_symbols[i]->scope_id);
     }
     printf("╠═══════╩═══════════╩══════════════════════════════╩═════════════════╩═════════════════╩═════════╩═════════╣\n");
     printf("║ " BOLD "Total de símbolos:" RESET "%-56d                               ║\n", all_symbols_count);
     printf("╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝\n");
 }
 
-/*
-   Responsável por:
-   1. Validar argumentos de linha de comando.
-   2. Abrir o arquivo de entrada.
-   3. Imprimir o cabeçalho da tabela de análise léxica.
-   4. Chamar yyparse() para iniciar a análise sintática (que por sua vez chama yylex()).
-   5. Imprimir o rodapé e status da análise léxica.
-   6. Chamar parsing_table() para imprimir a tabela de trace sintático.
-   7. Imprimir o status da análise sintática.
-   8. Chamar print_symbol_table() para imprimir a tabela de símbolos (preenchida pelo lexer).
-   9. Fechar o arquivo e retornar o status de sucesso (0) ou erro (1).
- */
 int main(int argc, char *argv[]) {
-    // Verifica se o nome do arquivo foi passado como argumento.
     if (argc < 2) {
         fprintf(stderr, "Uso: %s <arquivo>\n", argv[0]);
-        return 1; // Retorna erro.
+        return 1;
     }
-
-    // Tenta abrir o arquivo de entrada para leitura.
     yyin = fopen(argv[1], "r");
     if (!yyin) {
-        perror("Erro ao abrir o arquivo"); // Exibe erro do sistema.
-        return 1; // Retorna erro.
+        perror("Erro ao abrir arquivo");
+        return 1;
     }
 
-    /* Inicialização da tabela de símbolos com escopo global */
     initialize_symbol_table();
-
-    /* Imprime o cabeçalho da tabela de ANÁLISE LÉXICA. */
+    
+    printf("Iniciando análise...\n");
+        /* Imprime o cabeçalho da tabela de ANÁLISE LÉXICA. */
     printf("╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗\n");
     printf("║                                              " BOLD MAGENTA "ANÁLISE LÉXICA" RESET "                                              ║\n");
     printf("╠═══════════╦══════════════════════╦═══════════════════════════════════════════════════════════════════════╣\n");
@@ -1063,18 +831,11 @@ int main(int argc, char *argv[]) {
     }
     printf("╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝\n");
 
-
-    /* Imprime a tabela de ANÁLISE SINTÁTICA (trace) que foi preenchida durante o yyparse(). */
+    
     parsing_table();
-
-    /* Imprime a TABELA DE SÍMBOLOS que foi preenchida pelo analisador léxico. */
     print_symbol_table();
+    emit_flush(); // Imprime o código intermediário gerado
 
-    emit_flush();
-
-    // Fecha o arquivo de entrada.
     fclose(yyin);
-
-    // Retorna 0 se nao houve erros, 1 caso contrário.
     return (lexic_error_count == 0 && sintatic_error_count == 0) ? 0 : 1;
 }

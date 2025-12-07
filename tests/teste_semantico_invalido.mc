@@ -9,3 +9,4 @@ while (10) b = 0; // Erro 5: Condição do 'if' deve ser booleana (recebeu int)
 int x = 2, y = a, z = (3*4+6);
 
 print(j);
+
