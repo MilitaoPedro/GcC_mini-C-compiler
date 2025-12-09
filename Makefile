@@ -24,6 +24,9 @@ SVG_TARGET = src/automato.svg
 # --- Flags de Otimização do Graphviz ---
 GRAPHVIZ_FLAGS = -Goverlap=scale -Granksep=1.5 -Gnodesep=0.5 -Gsplines=true
 
+# --- PHONY TARGETS ---
+.PHONY: all clean graph debug
+
 # Target padrão: construir APENAS o compilador
 all: $(TARGET)
 
@@ -56,3 +59,8 @@ $(SVG_TARGET): $(YACC_GEN_DOT)
 clean:
 	@echo "Limpando arquivos gerados..."
 	rm -f $(TARGET) $(LEX_GEN_C) $(YACC_GEN_C) $(YACC_GEN_H) $(YACC_GEN_DOT) $(YACC_OUTPUT)
+
+# Target de debug: compila com símbolos de debug e prepara para usar com gdb/lldb
+debug: clean $(TARGET)
+	@echo "Compilador compilado com símbolos de debug completos (-g3)."
+	@echo "Para debugar, use: gdb ./$(TARGET)"

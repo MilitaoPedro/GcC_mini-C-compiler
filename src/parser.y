@@ -35,7 +35,6 @@ typedef struct scope_table {
     int symbol_count;
     struct scope_table *parent;
     Symbol **symbol_order;          /* Para impressão ordenada */
-    char **symbol_lexeme;
     int capacity;
     int id;
 } ScopeTable;
