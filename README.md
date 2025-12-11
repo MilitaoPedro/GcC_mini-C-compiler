@@ -1,90 +1,161 @@
-## GcC mini C compiler — Analisador Léxico
+# GcC Mini C Compiler
 
-Projeto educacional de um analisador léxico (scanner) inspirado em C, escrito com Flex. O objetivo é aprender, de forma prática, como funcionam os estágios iniciais de um compilador: reconhecimento de tokens, tabela de símbolos e reporte de erros léxicos.
+Este repositório contém a implementação completa de um compilador para a linguagem **Mini C** (um subconjunto educacional da linguagem C). O projeto foi desenvolvido como Trabalho Prático da disciplina **GCC130 - Compiladores** na **Universidade Federal de Lavras (UFLA)**.
 
-### Requisitos
-- flex
-- gcc
-- make
+O compilador realiza todas as etapas fundamentais de tradução: **Análise Léxica**, **Análise Sintática**, **Análise Semântica** e **Geração de Código Intermediário (IR)**.
 
-Verifique a instalação (macOS/Linux):
-```bash
-flex --version
-gcc --version
-make --version
-```
+-----
 
-### Estrutura do projeto
-```
-GcC_mini-C-compiler/
-  Makefile
-  README.md
-  src/
-    scanner.l     # Especificação Flex
-    lex.yy.c      # Gerado pelo flex (no build)
-    scanner       # Binário (no build)
-  tests/
-    teste.txt
-    teste_completo.txt
-    teste_validos.txt
-    teste_identificadores_invalidos.txt
-```
+## 📚 Funcionalidades Implementadas
 
-### Construção e execução
-Gerar o scanner e executar com o teste padrão (variável TEST no Makefile):
+O desenvolvimento foi dividido em três etapas incrementais:
+
+### 1\. Análise Léxica (Scanner)
+
+  * **Ferramenta:** Flex.
+  * **Funcionalidade:** Reconhecimento de tokens (palavras-chave, operadores, literais, identificadores).
+  * **Tratamento de Erros:** Reporta caracteres inválidos e números malformados com localização precisa (linha:coluna).
+  * **Ignora:** Espaços em branco e comentários (`//` e `/* ... */`).
+
+### 2\. Análise Sintática (Parser)
+
+  * **Ferramenta:** Bison (Gramática LR(1)).
+  * **Funcionalidade:** Validação da estrutura gramatical do código.
+  * **Resolução de Conflitos:**
+      * **Dangling Else:** Resolvido via fatoração gramatical (divisão em `matched` e `unmatched statements`), sem depender de "hacks" de precedência.
+      * **Precedência:** Operadores matemáticos e lógicos configurados via diretivas `%left`/`%right`.
+  * **Recuperação de Erros:** Implementação do "Modo Pânico", sincronizando a recuperação em `;` ou `}` para reportar múltiplos erros em uma única compilação.
+  * **Trace:** Geração de uma tabela de rastreamento visual das ações *Shift/Reduce*.
+
+### 3\. Análise Semântica e Geração de Código (Codegen)
+
+  * **Tabela de Símbolos:** Estrutura Hash (DJB2) com **Escopos Aninhados** e encadeados. Suporta sombreamento de variáveis (*shadowing*).
+  * **Verificação de Tipos (Type Checking):**
+      * Tipagem estrita (`int` e `bool`). Não há conversão implícita.
+      * Validação de operações aritméticas, relacionais e lógicas.
+      * Verificação de declaração prévia e redeclaração de variáveis.
+  * **Geração de Código Intermediário (IR):**
+      * Geração de **Código de Três Endereços** linear.
+      * **Renomeação de Variáveis:** Variáveis recebem sufixos de escopo (ex: `x_0`, `x_1`) para garantir unicidade no IR plano.
+      * **Curto-Circuito:** Implementação lógica de *short-circuit* para operadores `&&` e `||`.
+      * **Controle de Fluxo:** Tradução de `if/else` e `while` utilizando *labels* e *jumps* (`ifFalse`, `goto`, `Label:`).
+
+-----
+
+## 🚀 Como Executar
+
+### Pré-requisitos
+
+  * GCC (GNU Compiler Collection)
+  * Make
+  * Flex
+  * Bison
+  * Graphviz (opcional, para visualizar o autômato)
+
+### Compilação
+
+Para compilar o projeto e gerar o executável `src/compilador`:
+
 ```bash
 make
 ```
 
-Rodar com um teste específico (sobrescrevendo TEST):
+Para limpar os arquivos gerados:
+
 ```bash
-make clean && make TEST=tests/teste_validos.txt
+make clean
 ```
 
-Executar diretamente o binário com um arquivo de entrada:
+### Execução
+
+Para rodar o compilador com um arquivo de entrada:
+
 ```bash
-src/scanner caminho/para/arquivo.c
+./src/compilador tests/teste_valido.txt
 ```
 
-### Tokens reconhecidos (resumo)
-- Palavras-chave: `int`, `bool`, `if`, `else`, `while`, `print`, `read`, `true`, `false`
-- Operadores relacionais: `==`, `!=`, `<=`, `>=`, `<`, `>`
-- Operadores lógicos: `&&`, `||`, `!`
-- Operadores aritméticos: `+`, `-`, `*`, `/`, `%`
-- Atribuição: `=`
-- Pontuação: `;`, `,`, `(`, `)`, `{`, `}`
-- Identificadores: começam com letra `[a-zA-Z]`, seguidos de letras, dígitos ou `_`
-- Inteiros: `-?` seguido de um ou mais dígitos (ex.: `42`, `-15`)
-- Espaços e tabulações são ignorados; novas linhas atualizam a posição
-- Comentários: `// até fim da linha` e `/* ... */` (múltiplas linhas)
+-----
 
-### Regras de erro léxico
-- Caractere não reconhecido: qualquer símbolo fora das regras acima gera um erro único, por exemplo `@`, `$`, `#`, `&` isolados.
-- Número com sufixo inválido: sequências como `1inr`, `10abc` são tratadas como um único token inválido e reportadas como “Número inválido: sufixo inválido em literal inteiro `<lexema>`”. Isso evita quebrar em `INTEGER` + `IDENTIFIER` e facilita o diagnóstico.
-- Identificadores com caracteres inválidos (ex.: `erro@`) serão reportados como erros de caractere não reconhecido no ponto do caractere inválido.
+## 📂 Estrutura do Projeto
 
-As mensagens são exibidas com linha e coluna e contabilizadas em `error_count`. O processo retorna código de saída `1` se houver erros, e `0` quando não houver.
-
-### Tabela de símbolos
-- Estrutura: hash table (`symbol_table`) com encadeamento por listas em cada bucket.
-- Cada entrada guarda: `lexeme`, `token_type`, `line`, `column`.
-- Duplicatas por `lexeme` são evitadas via `lookup` antes da inserção.
-- Impressão ao final da análise, com contagem total de símbolos e erros.
-
-Detalhes de implementação:
-- `HASH_SIZE = 101` define o número de buckets.
-- `hash_function` usa base polinomial 31 e aplica `% HASH_SIZE` para obter o índice do bucket.
-- Complexidade média de `lookup`/`insert`: O(1), mantendo fator de carga razoável.
-
-Observação: a tabela de símbolos será impressa na ordem de inserção do token na tabela, ou seja, o primeiro fator de comparação é a linha do token e o segundo a coluna em que o token se inicia.
-
-### Exemplos rápidos
-Executar com um arquivo simples:
-```bash
-src/scanner tests/teste.txt
+```
+GcC_mini-C-compiler/
+├── docs/                 # Relatórios detalhados das Etapas 1, 2 e 3 (PDF)
+├── src/
+│   ├── scanner.l         # Especificação Léxica (Flex)
+│   ├── parser.y          # Especificação Sintática e Semântica (Bison)
+│   ├── codegen.c/h       # Funções auxiliares para geração de IR e formatação
+│   ├── automato.svg      # Visualização do autômato LR (gerado pelo make graph)
+│   └── ...
+├── tests/                # Casos de teste (válidos e inválidos)
+├── Makefile              # Automação de build
+└── README.md             # Documentação do projeto
 ```
 
-### Projetos futuros
-- Implementar _rehash_ para a tabela hash
-- Suporte a literais de string: adicionar regra `"[^"\n]*"` (e escapar adequadamente) se desejar reconhecer strings.
-- Implementação de análise sintática e semântica
+-----
+
+## 🖥️ Exemplo de Saída
+
+Ao compilar um código fonte válido, o compilador gera três saídas principais no terminal, formatadas com cores ANSI para facilitar a leitura.
+
+### 1\. Código Fonte (Exemplo)
+
+```c
+int x = 10;
+if (x > 0) {
+    bool x = true; // Shadowing
+    while (x) {
+        x = false;
+    }
+}
+```
+
+### 2\. Tabela de Símbolos (Com Escopos)
+
+O compilador exibe os identificadores, seus tipos e a profundidade do escopo.
+
+| ID | [Lin:Col] | LEXEMA | TOKEN | TIPO | DEPTH | SCOPE |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| [001] | [001:005] | x | TK\_ID | INTEGER | 0 | 0 |
+| [002] | [003:010] | x | TK\_ID | BOOL | 1 | 1 |
+
+### 3\. Código Intermediário (IR)
+
+Geração de código de três endereços com labels e temporários (`t0`, `t1`...). Note o renomeação das variáveis (`x_0` vs `x_1`).
+
+```text
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                      CÓDIGO INTERMEDIÁRIO (IR - 3 ENDEREÇOS)                     ║
+╠════════════╦═════════════════════════════════════════════════════════════════════╣
+║   LABELS   ║ INSTRUÇÕES                                                          ║
+╠════════════╬═════════════════════════════════════════════════════════════════════╣
+║            ║ x_0 = 10                                                            ║
+║            ║ t0 = x_0 > 0                                                        ║
+║            ║ ifFalse t0 goto L0                                                  ║
+║            ║ x_1 = true                                                          ║
+║ L1:        ║                                                                     ║
+║            ║ ifFalse x_1 goto L2                                                 ║
+║            ║ x_1 = false                                                         ║
+║            ║ goto L1                                                             ║
+║ L2:        ║                                                                     ║
+║ L0:        ║                                                                     ║
+╚════════════╩═════════════════════════════════════════════════════════════════════╝
+```
+
+-----
+
+## 📄 Documentação
+
+Para detalhes profundos sobre as decisões de projeto, gramática BNF completa e análise de conflitos LR, consulte os relatórios disponíveis na pasta `docs/`:
+
+  * [Relatório Etapa 1 - Análise Léxica](https://drive.google.com/file/d/13ZawfM8QE4xClFPvgkyB2De_BYDfX-fD/view?usp=sharing)
+  * [Relatório Etapa 2 - Análise Sintática](https://drive.google.com/file/d/1zVxSE18Ssn2I64tDd4rgrbZRv-ReUyG7/view?usp=sharing)
+  * [Relatório Etapa 3 - Semântica e Geração de Código](https://drive.google.com/file/d/1Hh6GqT89JFFSarFA7wnX_WOJ2f2Ynd-m/view?usp=sharing)
+
+-----
+
+## 👨‍💻 Autores
+
+  * **Gustavo Costa Almeida**
+  * **Henrique César Silva Soares**
+  * **Pedro Militão Mello Reis**
