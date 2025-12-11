@@ -1,4 +1,6 @@
+
 # GcC Mini C Compiler
+
 ![Language](https://img.shields.io/badge/language-C-blue)
 ![Tools](https://img.shields.io/badge/tools-Flex%20|%20Bison-green)
 ![Grade](https://img.shields.io/badge/Nota%20Final-91.25%25-brightgreen)
@@ -15,57 +17,52 @@ O compilador realiza todas as etapas fundamentais de tradução: **Análise Léx
 
 O desenvolvimento foi dividido em três etapas incrementais:
 
-### 1\. Análise Léxica (Scanner)
+### 1. Análise Léxica (Scanner)
+* **Ferramenta:** Flex.
+* **Funcionalidade:** Reconhecimento de tokens (palavras-chave, operadores, literais, identificadores).
+* **Tratamento de Erros:** Reporta caracteres inválidos e números malformados com localização precisa (linha:coluna).
+* **Ignora:** Espaços em branco e comentários (`//` e `/* ... */`).
 
-  * **Ferramenta:** Flex.
-  * **Funcionalidade:** Reconhecimento de tokens (palavras-chave, operadores, literais, identificadores).
-  * **Tratamento de Erros:** Reporta caracteres inválidos e números malformados com localização precisa (linha:coluna).
-  * **Ignora:** Espaços em branco e comentários (`//` e `/* ... */`).
+### 2. Análise Sintática (Parser)
+* **Ferramenta:** Bison (Gramática LR(1)).
+* **Funcionalidade:** Validação da estrutura gramatical do código.
+* **Resolução de Conflitos:**
+    * **Dangling Else:** Resolvido via fatoração gramatical (divisão em `matched` e `unmatched statements`), garantindo uma gramática livre de conflitos *Shift/Reduce* sem depender de precedência forçada.
+    * **Precedência:** Operadores matemáticos e lógicos configurados via diretivas `%left`/`%right`.
+* **Recuperação de Erros:** Implementação do "Modo Pânico", sincronizando a recuperação em `;` ou `}` para reportar múltiplos erros em uma única compilação.
+* **Trace:** Geração de uma tabela de rastreamento visual das ações *Shift/Reduce* para depuração.
 
-### 2\. Análise Sintática (Parser)
+### 3. Análise Semântica e Geração de Código (Codegen)
+* **Tabela de Símbolos:** Estrutura Hash (DJB2) com **Escopos Aninhados** e encadeados. Suporta sombreamento de variáveis (*shadowing*).
+* **Verificação de Tipos (Type Checking):**
+    * Tipagem estrita (`int` e `bool`). Não há conversão implícita (cast).
+    * Validação de operações aritméticas, relacionais e lógicas.
+    * Verificação de declaração prévia e redeclaração de variáveis.
+* **Geração de Código Intermediário (IR):**
+    * Geração de **Código de Três Endereços** linear via Tradução Dirigida por Sintaxe.
+    * **Renomeação de Variáveis:** Variáveis recebem sufixos de escopo (ex: `x_0`, `x_1`) para garantir unicidade e integridade no IR plano.
+    * **Curto-Circuito:** Implementação lógica de *short-circuit* para operadores `&&` e `||` utilizando desvios condicionais.
+    * **Controle de Fluxo:** Tradução de `if/else` e `while` utilizando *labels* e *jumps* (`ifFalse`, `goto`, `Label:`).
 
-  * **Ferramenta:** Bison (Gramática LR(1)).
-  * **Funcionalidade:** Validação da estrutura gramatical do código.
-  * **Resolução de Conflitos:**
-      * **Dangling Else:** Resolvido via fatoração gramatical (divisão em `matched` e `unmatched statements`), sem depender de "hacks" de precedência.
-      * **Precedência:** Operadores matemáticos e lógicos configurados via diretivas `%left`/`%right`.
-  * **Recuperação de Erros:** Implementação do "Modo Pânico", sincronizando a recuperação em `;` ou `}` para reportar múltiplos erros em uma única compilação.
-  * **Trace:** Geração de uma tabela de rastreamento visual das ações *Shift/Reduce*.
-
-### 3\. Análise Semântica e Geração de Código (Codegen)
-
-  * **Tabela de Símbolos:** Estrutura Hash (DJB2) com **Escopos Aninhados** e encadeados. Suporta sombreamento de variáveis (*shadowing*).
-  * **Verificação de Tipos (Type Checking):**
-      * Tipagem estrita (`int` e `bool`). Não há conversão implícita.
-      * Validação de operações aritméticas, relacionais e lógicas.
-      * Verificação de declaração prévia e redeclaração de variáveis.
-  * **Geração de Código Intermediário (IR):**
-      * Geração de **Código de Três Endereços** linear.
-      * **Renomeação de Variáveis:** Variáveis recebem sufixos de escopo (ex: `x_0`, `x_1`) para garantir unicidade no IR plano.
-      * **Curto-Circuito:** Implementação lógica de *short-circuit* para operadores `&&` e `||`.
-      * **Controle de Fluxo:** Tradução de `if/else` e `while` utilizando *labels* e *jumps* (`ifFalse`, `goto`, `Label:`).
-
------
+---
 
 ## 🚀 Como Executar
 
 ### Pré-requisitos
-
-  * GCC (GNU Compiler Collection)
-  * Make
-  * Flex
-  * Bison
-  * Graphviz (opcional, para visualizar o autômato)
+* GCC (GNU Compiler Collection)
+* Make
+* Flex
+* Bison
+* Graphviz (opcional, para visualizar o autômato gerado)
 
 ### Compilação
-
 Para compilar o projeto e gerar o executável `src/compilador`:
 
 ```bash
 make
-```
+````
 
-Para limpar os arquivos gerados:
+Para limpar os arquivos gerados (objetos, binários e temporários):
 
 ```bash
 make clean
@@ -73,7 +70,7 @@ make clean
 
 ### Execução
 
-Para rodar o compilador com um arquivo de entrada:
+Para rodar o compilador com um arquivo de entrada (código fonte Mini C):
 
 ```bash
 ./src/compilador tests/teste_semantico_valido.mc
@@ -85,7 +82,7 @@ Para rodar o compilador com um arquivo de entrada:
 
 ```
 GcC_mini-C-compiler/
-├── docs/                 # Relatórios detalhados das Etapas 1, 2 e 3 (PDF)
+├── docs/                 # Relatórios e enunciado do trabalho (PDF)
 ├── src/
 │   ├── scanner.l         # Especificação Léxica (Flex)
 │   ├── parser.y          # Especificação Sintática e Semântica (Bison)
@@ -108,7 +105,7 @@ Ao compilar um código fonte válido, o compilador gera três saídas principais
 ```c
 int x = 10;
 if (x > 0) {
-    bool x = true; // Shadowing
+    bool x = true; // Shadowing: x bool esconde x int
     while (x) {
         x = false;
     }
@@ -126,7 +123,7 @@ O compilador exibe os identificadores, seus tipos e a profundidade do escopo.
 
 ### 3\. Código Intermediário (IR)
 
-Geração de código de três endereços com labels e temporários (`t0`, `t1`...). Note o renomeação das variáveis (`x_0` vs `x_1`).
+Geração de código de três endereços com labels e temporários (`t0`, `t1`...). Note a renomeação das variáveis (`x_0` vs `x_1`) para tratar o escopo.
 
 ```text
 ╔══════════════════════════════════════════════════════════════════════════════════╗
@@ -151,8 +148,9 @@ Geração de código de três endereços com labels e temporários (`t0`, `t1`..
 
 ## 📄 Documentação
 
-Para detalhes profundos sobre as decisões de projeto, gramática BNF completa e análise de conflitos LR, consulte os relatórios disponíveis na pasta `docs/`:
+Para detalhes profundos sobre as decisões de projeto, gramática BNF completa, análise de conflitos LR e o enunciado original, consulte os arquivos disponíveis na pasta `docs/` ou nos links abaixo:
 
+  * [Enunciado do Trabalho Prático](https://drive.google.com/file/d/1MCaAugoOb3N5t_xk0rJ-VCosgNUFB8Kk/view?usp=sharing)
   * [Relatório Etapa 1 - Análise Léxica](https://drive.google.com/file/d/13ZawfM8QE4xClFPvgkyB2De_BYDfX-fD/view?usp=sharing)
   * [Relatório Etapa 2 - Análise Sintática](https://drive.google.com/file/d/1zVxSE18Ssn2I64tDd4rgrbZRv-ReUyG7/view?usp=sharing)
   * [Relatório Etapa 3 - Semântica e Geração de Código](https://drive.google.com/file/d/1Hh6GqT89JFFSarFA7wnX_WOJ2f2Ynd-m/view?usp=sharing)
@@ -164,3 +162,8 @@ Para detalhes profundos sobre as decisões de projeto, gramática BNF completa e
   * **Gustavo Costa Almeida**
   * **Henrique César Silva Soares**
   * **Pedro Militão Mello Reis**
+
+<!-- end list -->
+
+```
+```
