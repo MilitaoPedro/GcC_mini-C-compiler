@@ -1,10 +1,15 @@
 # GcC Mini C Compiler
+![Language](https://img.shields.io/badge/language-C-blue)
+![Tools](https://img.shields.io/badge/tools-Flex%20|%20Bison-green)
+![Grade](https://img.shields.io/badge/Nota%20Final-91.25%25-brightgreen)
 
 Este repositório contém a implementação completa de um compilador para a linguagem **Mini C** (um subconjunto educacional da linguagem C). O projeto foi desenvolvido como Trabalho Prático da disciplina **GCC130 - Compiladores** na **Universidade Federal de Lavras (UFLA)**.
 
 O compilador realiza todas as etapas fundamentais de tradução: **Análise Léxica**, **Análise Sintática**, **Análise Semântica** e **Geração de Código Intermediário (IR)**.
 
------
+> 🏆 **Resultado:** O projeto obteve a nota de **36,5 / 40,0 (91,25%)**.
+
+---
 
 ## 📚 Funcionalidades Implementadas
 
