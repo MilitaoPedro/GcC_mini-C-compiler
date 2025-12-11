@@ -71,7 +71,7 @@ make clean
 Para rodar o compilador com um arquivo de entrada:
 
 ```bash
-./src/compilador tests/teste_valido.txt
+./src/compilador tests/teste_semantico_valido.mc
 ```
 
 -----
